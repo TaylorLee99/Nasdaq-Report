@@ -1,0 +1,43 @@
+{
+  "thread_id": "analysis:2ba56bcfdd1440e9aed7d060310adf7a",
+  "node_name": "manual_review_gate",
+  "timestamp": "20260315T143132185081Z",
+  "state_summary": {
+    "request_id": "analysis:2ba56bcfdd1440e9aed7d060310adf7a",
+    "ticker": "AAPL",
+    "completed_steps": [
+      "task_planner",
+      "document_router",
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "run_call_agent",
+      "conflict_checker",
+      "evidence_verifier"
+    ],
+    "route_plan": [
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "synthetic_agent"
+    ],
+    "shared_memory_count": 12,
+    "agent_packet_count": 8,
+    "verification_result_count": 4,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "complete"
+  },
+  "update_summary": {
+    "keys": [
+      "agent_packets",
+      "completed_steps",
+      "shared_memory",
+      "updated_at",
+      "verifier_notes"
+    ],
+    "completed_steps_count": 1,
+    "agent_packets_count": 1
+  },
+  "manual_review_requests": []
+}

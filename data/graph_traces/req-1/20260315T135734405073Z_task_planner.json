@@ -1,0 +1,30 @@
+{
+  "thread_id": "req-1",
+  "node_name": "task_planner",
+  "timestamp": "20260315T135734405073Z",
+  "state_summary": {
+    "request_id": "req-1",
+    "ticker": "MSFT",
+    "completed_steps": [],
+    "route_plan": [],
+    "shared_memory_count": 0,
+    "agent_packet_count": 0,
+    "verification_result_count": 0,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "not_started"
+  },
+  "update_summary": {
+    "keys": [
+      "agent_packets",
+      "completed_steps",
+      "coverage_status",
+      "execution_plan",
+      "shared_memory",
+      "updated_at"
+    ],
+    "completed_steps_count": 1,
+    "agent_packets_count": 1
+  },
+  "manual_review_requests": []
+}

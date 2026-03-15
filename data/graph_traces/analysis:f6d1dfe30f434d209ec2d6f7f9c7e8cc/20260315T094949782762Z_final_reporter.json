@@ -1,0 +1,43 @@
+{
+  "thread_id": "analysis:f6d1dfe30f434d209ec2d6f7f9c7e8cc",
+  "node_name": "final_reporter",
+  "timestamp": "20260315T094949782762Z",
+  "state_summary": {
+    "request_id": "analysis:f6d1dfe30f434d209ec2d6f7f9c7e8cc",
+    "ticker": "PLTR",
+    "completed_steps": [
+      "task_planner",
+      "document_router",
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "run_call_agent",
+      "conflict_checker",
+      "evidence_verifier",
+      "manual_review_gate",
+      "synthetic_agent"
+    ],
+    "route_plan": [
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "synthetic_agent"
+    ],
+    "shared_memory_count": 17,
+    "agent_packet_count": 10,
+    "verification_result_count": 5,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "complete"
+  },
+  "update_summary": {
+    "keys": [
+      "completed_steps",
+      "coverage_status",
+      "final_report",
+      "updated_at"
+    ],
+    "completed_steps_count": 1
+  },
+  "manual_review_requests": []
+}

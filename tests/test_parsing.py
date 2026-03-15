@@ -98,6 +98,81 @@ def test_ten_k_parser_strips_business_heading_artifacts_from_section_body() -> N
     assert sections[0].text == "We report our business results in two segments."
 
 
+def test_ten_k_parser_matches_split_item_business_heading() -> None:
+    sections = parse_document(
+        RawDocument(
+            document_id="doc-10k-split-business-heading",
+            company=build_company(),
+            document_type=FilingType.FORM_10K,
+            content=(
+                "ITEM 1. B\n"
+                "USINESS\n"
+                "Microsoft is a technology company that develops and supports software, "
+                "services, devices, and solutions.\n"
+                "ITEM 1A. RISK FACTORS\n"
+                "Risk factor text.\n"
+                "ITEM 7. MANAGEMENT'S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION "
+                "AND RESULTS OF OPERATIONS\n"
+                "MD&A text.\n"
+                "ITEM 8. FINANCIAL STATEMENTS AND SUPPLEMENTARY DATA\n"
+                "Financial statements text.\n"
+                "Notes to Financial Statements\n"
+                "Notes text.\n"
+            ),
+            filing_metadata=FilingMetadata(
+                filing_id="filing-10k-split-business-heading",
+                company=build_company(),
+                filing_type=FilingType.FORM_10K,
+                accession_number="0000950170-25-100235",
+                filed_at=date(2025, 7, 30),
+            ),
+        )
+    )
+
+    assert sections[0].section_type == DocumentSectionType.BUSINESS
+    assert "technology company" in sections[0].text.lower()
+
+
+def test_ten_k_parser_skips_table_of_contents_heading_matches() -> None:
+    sections = parse_document(
+        RawDocument(
+            document_id="doc-10k-toc-skip",
+            company=build_company(),
+            document_type=FilingType.FORM_10K,
+            content=(
+                "Table of Contents\n"
+                "Item 8. Financial Statements and Supplementary Data\n"
+                "91\n"
+                "Item 1. Business\n"
+                "3\n"
+                "Item 1. Business\n"
+                "Microsoft is a technology company that develops and supports software, "
+                "services, devices, and solutions.\n"
+                "Item 1A. Risk Factors\n"
+                "Risk factor text.\n"
+                "Item 7. Management's Discussion and Analysis of Financial Condition and "
+                "Results of Operations\n"
+                "MD&A text.\n"
+                "Item 8. Financial Statements and Supplementary Data\n"
+                "Financial statements text.\n"
+                "Notes to Financial Statements\n"
+                "Notes text.\n"
+            ),
+            filing_metadata=FilingMetadata(
+                filing_id="filing-10k-toc-skip",
+                company=build_company(),
+                filing_type=FilingType.FORM_10K,
+                accession_number="0000950170-25-100235",
+                filed_at=date(2025, 7, 30),
+            ),
+        )
+    )
+
+    assert sections[0].section_type == DocumentSectionType.BUSINESS
+    assert sections[0].heading.startswith("Item 1. Business")
+    assert "technology company" in sections[0].text.lower()
+
+
 def test_ten_q_parser_extracts_liquidity_and_controls() -> None:
     sections = parse_document(build_raw_document("parser_10q.txt", FilingType.FORM_10Q))
 
@@ -106,6 +181,44 @@ def test_ten_q_parser_extracts_liquidity_and_controls() -> None:
     assert DocumentSectionType.LIQUIDITY in section_types
     assert DocumentSectionType.CONTROLS in section_types
     assert DocumentSectionType.FINANCIAL_STATEMENTS in section_types
+
+
+def test_ten_q_parser_matches_inline_item2_heading() -> None:
+    sections = parse_document(
+        RawDocument(
+            document_id="doc-10q-inline-item2",
+            company=build_company(),
+            document_type=FilingType.FORM_10Q,
+            content=(
+                "Item 2.    Management's Discussion and Analysis of Financial Condition "
+                "and Results of Operations\n"
+                "Overview\n"
+                "Revenue increased in the quarter due to higher demand.\n"
+                "Liquidity and Capital Resources\n"
+                "As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, "
+                "and marketable securities.\n"
+                "Item 4. Controls and Procedures\n"
+                "Controls text.\n"
+            ),
+            filing_metadata=FilingMetadata(
+                filing_id="filing-10q-inline-item2",
+                company=build_company(),
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000320193-26-000006",
+                filed_at=date(2026, 1, 30),
+            ),
+        )
+    )
+
+    mda_section = next(
+        section for section in sections if section.section_type == DocumentSectionType.MDA
+    )
+    liquidity_section = next(
+        section for section in sections if section.section_type == DocumentSectionType.LIQUIDITY
+    )
+
+    assert "Revenue increased in the quarter" in mda_section.text
+    assert "cash, cash equivalents, and marketable securities" in liquidity_section.text
 
 
 def test_ten_q_parser_splits_market_risk_heading_from_liquidity_section() -> None:
@@ -189,6 +302,128 @@ def test_ten_q_parser_splits_accounting_pronouncements_from_liquidity_section() 
     assert "As of October 26, 2025" in liquidity_section.text
     assert "Accounting Pronouncements" not in liquidity_section.text
     assert "new accounting pronouncements" in notes_section.text
+
+
+def test_ten_q_parser_splits_product_intro_and_legal_subheadings_from_mda() -> None:
+    sections = parse_document(
+        RawDocument(
+            document_id="doc-10q-subheading-generalization",
+            company=build_company(),
+            document_type=FilingType.FORM_10Q,
+            content=(
+                "Item 2. Management's Discussion and Analysis of Financial Condition and "
+                "Results of Operations\n"
+                "Overview\n"
+                "Revenue increased 12% in the quarter.\n"
+                "Business Seasonality and Product Introductions\n"
+                "During the first quarter of 2026, the Company announced updated products.\n"
+                "Legal Proceedings\n"
+                "The outcomes of legal proceedings are subject to significant uncertainty.\n"
+                "Item 4. Controls and Procedures\n"
+                "Controls text.\n"
+            ),
+            filing_metadata=FilingMetadata(
+                filing_id="filing-10q-subheading-generalization",
+                company=build_company(),
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000320193-26-000006",
+                filed_at=date(2026, 1, 30),
+            ),
+        )
+    )
+
+    headings = [section.heading for section in sections]
+
+    assert any("Business Seasonality and Product Introductions" in heading for heading in headings)
+    assert any("Legal Proceedings" in heading for heading in headings)
+
+
+def test_ten_q_parser_splits_critical_accounting_estimates_from_liquidity_section() -> None:
+    sections = parse_document(
+        RawDocument(
+            document_id="doc-10q-critical-accounting-boundary",
+            company=build_company(),
+            document_type=FilingType.FORM_10Q,
+            content=(
+                "Management's Discussion and Analysis of Financial Condition and Results "
+                "of Operations\n"
+                "Narrative intro.\n"
+                "Liquidity and Capital Resources\n"
+                "As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, "
+                "and marketable securities.\n"
+                "Critical Accounting Estimates\n"
+                "The preparation of financial statements and related disclosures requires "
+                "management to make estimates and assumptions.\n"
+                "Item 4. Controls and Procedures\n"
+                "Controls text.\n"
+            ),
+            filing_metadata=FilingMetadata(
+                filing_id="filing-10q-critical-accounting-boundary",
+                company=build_company(),
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001045810-25-000230",
+                filed_at=date(2025, 11, 19),
+            ),
+        )
+    )
+
+    liquidity_section = next(
+        section for section in sections if section.section_type == DocumentSectionType.LIQUIDITY
+    )
+    notes_section = next(
+        section
+        for section in sections
+        if section.section_type == DocumentSectionType.NOTES
+        and "Critical Accounting Estimates" in section.heading
+    )
+
+    assert "As of October 26, 2025" in liquidity_section.text
+    assert "Critical Accounting Estimates" not in liquidity_section.text
+    assert "make estimates and assumptions" in notes_section.text
+
+
+def test_ten_q_parser_splits_significant_accounting_policies_from_liquidity_section() -> None:
+    sections = parse_document(
+        RawDocument(
+            document_id="doc-10q-significant-accounting-boundary",
+            company=build_company(),
+            document_type=FilingType.FORM_10Q,
+            content=(
+                "Management's Discussion and Analysis of Financial Condition and Results "
+                "of Operations\n"
+                "Narrative intro.\n"
+                "Liquidity and Capital Resources\n"
+                "The Company believes its balances of cash, cash equivalents and marketable "
+                "securities will be sufficient to meet working capital needs.\n"
+                "Summary of Significant Accounting Policies\n"
+                "The Company describes the significant accounting policies and methods used "
+                "in the preparation of its condensed consolidated financial statements.\n"
+                "Item 4. Controls and Procedures\n"
+                "Controls text.\n"
+            ),
+            filing_metadata=FilingMetadata(
+                filing_id="filing-10q-significant-accounting-boundary",
+                company=build_company(),
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000320193-26-000006",
+                filed_at=date(2026, 1, 30),
+            ),
+        )
+    )
+
+    liquidity_section = next(
+        section for section in sections if section.section_type == DocumentSectionType.LIQUIDITY
+    )
+    notes_section = next(
+        section
+        for section in sections
+        if section.section_type == DocumentSectionType.NOTES
+        and "Summary of Significant Accounting Policies" in section.heading
+    )
+
+    assert "cash, cash equivalents and marketable securities" in liquidity_section.text
+    assert "Summary of Significant Accounting Policies" not in liquidity_section.text
+    assert "significant accounting policies" in notes_section.text
 
 
 def test_eight_k_parser_emits_item_numbers() -> None:

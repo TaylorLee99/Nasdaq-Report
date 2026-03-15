@@ -16,7 +16,12 @@ from app.domain import (
     VerificationLabel,
     VerificationStatus,
 )
-from app.reporting import build_verified_report, render_report_markdown, serialize_report_json
+from app.reporting import (
+    build_verified_report,
+    render_report_html,
+    render_report_markdown,
+    serialize_report_json,
+)
 
 
 def make_evidence(evidence_id: str, excerpt: str) -> EvidenceRef:
@@ -144,7 +149,10 @@ def test_build_verified_report_excludes_unsupported_claims_and_renders_sections(
     assert included_ids == {"finding-supported", "finding-partial"}
     assert report.key_opportunities[0].finding_id == "finding-supported"
     assert report.key_risks[0].finding_id == "finding-partial"
-    assert report.coverage_summary.missing_topics == []
+    assert report.coverage_summary.missing_topics == [
+        "long_term_structure",
+        "material_events",
+    ]
     assert report.watchpoints[0].finding_id == "finding-partial"
     assert report.analysis_scope.allowed_sources == [
         FilingType.FORM_10K,
@@ -361,6 +369,72 @@ def test_report_renderers_output_markdown_and_json() -> None:
         == "finding-supported"
     )
     assert payload["verification_summary"]["supported_claim_count"] == 1
+
+
+def test_coverage_summary_does_not_mark_channel_covered_without_verified_findings() -> None:
+    company = Company(cik="0000320193", ticker="AAPL", company_name="Apple Inc.")
+    ten_k = AgentFinding(
+        finding_id="finding-coverage-10k",
+        agent_name="run_10k_agent",
+        company=company,
+        claim="The Company designs, manufactures and markets smartphones and related services.",
+        summary="The Company designs, manufactures and markets smartphones and related services.",
+        signal_type=FindingSignalType.FUNDAMENTAL,
+        filing_types=[FilingType.FORM_10K],
+        evidence_refs=[
+            EvidenceRef(
+                evidence_id="ev-coverage-10k",
+                document_id="doc-coverage-10k",
+                filing_type=FilingType.FORM_10K,
+                excerpt="Business overview evidence.",
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["long_term_structure"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    packets = [
+        AgentOutputPacket(agent_name="run_10k_agent", findings=[ten_k]),
+        AgentOutputPacket(
+            agent_name="run_10q_agent",
+            findings=[],
+            unresolved_items=["missing_recent_quarter_delta"],
+            coverage_status=CoverageStatus(
+                label=CoverageLabel.PARTIAL,
+                covered_topics=["recent_quarter_change"],
+                missing_topics=["missing_recent_quarter_delta"],
+            ),
+        ),
+    ]
+
+    report = build_verified_report(
+        report_id="report-coverage-channel",
+        company=company,
+        question="Build a filing-only report.",
+        packets=packets,
+        verification_results=[
+            make_result(
+                finding_id="finding-coverage-10k",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.PARTIAL,
+            covered_topics=["long_term_structure"],
+            missing_topics=["recent_quarter_change"],
+        ),
+        include_transcript=False,
+    )
+
+    assert report.coverage_summary.covered_channels == [FilingType.FORM_10K]
+    assert FilingType.FORM_10Q in report.coverage_summary.missing_channels
+    assert report.coverage_summary.coverage_label == CoverageLabel.PARTIAL
 
 
 def test_final_thesis_prefers_material_event_before_liquidity_and_structure() -> None:
@@ -1370,7 +1444,10 @@ def test_executive_summary_and_thesis_deprioritize_item_901_exhibit_only_finding
 
     assert "Exhibit filed" not in report.executive_summary.summary
     assert "Exhibit filed" not in report.final_investment_thesis.thesis
-    assert report.coverage_summary.missing_topics == []
+    assert report.coverage_summary.missing_topics == [
+        "long_term_structure",
+        "material_events",
+    ]
 
 
 def test_executive_summary_handles_company_name_abbreviation_without_false_split() -> None:
@@ -1770,7 +1847,7 @@ def test_watchpoints_include_supported_medium_confidence_findings_when_needed() 
     assert report.watchpoints[0].trigger_to_monitor == "recent_quarter_change"
 
 
-def test_coverage_summary_does_not_list_missing_topic_when_supported_finding_covers_it() -> None:
+def test_coverage_summary_marks_material_events_missing_when_only_weak_exhibit_remains() -> None:
     company = Company(cik="0001045810", ticker="NVDA", company_name="NVIDIA Corp.")
     finding = AgentFinding(
         finding_id="finding-material-events-covered",
@@ -1820,7 +1897,8 @@ def test_coverage_summary_does_not_list_missing_topic_when_supported_finding_cov
         include_transcript=False,
     )
 
-    assert report.coverage_summary.missing_topics == []
+    assert FilingType.FORM_8K in report.coverage_summary.missing_channels
+    assert "material_events" in report.coverage_summary.missing_topics
 
 
 def test_report_rewrites_verbose_10k_technology_stack_sentence() -> None:
@@ -2065,3 +2143,576 @@ def test_report_preserves_company_abbreviation_case_after_period() -> None:
     )
 
     assert "Corp. adopted" in report.executive_summary.summary
+
+
+def test_report_prefers_non_fragment_8k_claim_in_executive_summary() -> None:
+    company = Company(cik="0000789019", ticker="MSFT", company_name="Microsoft Corp.")
+    finding = AgentFinding(
+        finding_id="finding-fragment-8k-summary",
+        agent_name="run_8k_agent",
+        company=company,
+        claim=(
+            "Microsoft Corporation issued a press release on January 28, 2026, "
+            "announcing its financial results for the fiscal quarter ended "
+            "December 31, 2025."
+        ),
+        summary=(
+            "Item 2.02 (Results of Operations and Financial Condition) disclosed that "
+            "Microsoft Corporation issued a press release on January 28, 2026, "
+            "announcing its financial results for the fiscal quarter en."
+        ),
+        signal_type=FindingSignalType.EVENT,
+        filing_types=[FilingType.FORM_8K],
+        evidence_refs=[
+            EvidenceRef(
+                evidence_id="ev-fragment-8k-summary",
+                document_id="doc-fragment-8k-summary",
+                filing_type=FilingType.FORM_8K,
+                excerpt=(
+                    "On January 28, 2026, Microsoft Corporation issued a press release "
+                    "announcing its financial results for the fiscal quarter ended "
+                    "December 31, 2025."
+                ),
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["material_events"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    packet = AgentOutputPacket(agent_name="run_8k_agent", findings=[finding])
+
+    report = build_verified_report(
+        report_id="report-fragment-8k-summary",
+        company=company,
+        question="Summarize the latest filings.",
+        packets=[packet],
+        verification_results=[
+            make_result(
+                finding_id="finding-fragment-8k-summary",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            )
+        ],
+        coverage_status=finding.coverage_status,
+        include_transcript=False,
+    )
+
+    assert "quarter en." not in report.executive_summary.summary
+    assert "ended December 31, 2025" in report.executive_summary.summary
+
+
+def test_report_normalizes_duplicate_prefix_and_company_style_clauses() -> None:
+    company = Company(cik="0000320193", ticker="AAPL", company_name="Apple Inc.")
+    recent_finding = AgentFinding(
+        finding_id="finding-aapl-duplicate-prefix",
+        agent_name="run_10q_agent",
+        company=company,
+        claim=(
+            "Europe Europe net sales increased during the first quarter of 2026 "
+            "compared to the same quarter in 2025 primarily due to higher net sales "
+            "of iPhone and Services."
+        ),
+        summary=(
+            "Europe Europe net sales increased during the first quarter of 2026 "
+            "compared to the same quarter in 2025 primarily due to higher net sales "
+            "of iPhone and Services."
+        ),
+        signal_type=FindingSignalType.FUNDAMENTAL,
+        filing_types=[FilingType.FORM_10Q],
+        evidence_refs=[
+            make_evidence(
+                "ev-aapl-duplicate-prefix",
+                (
+                    "Europe Europe net sales increased during the first quarter of "
+                    "2026 compared to the same quarter in 2025 primarily due to "
+                    "higher net sales of iPhone and Services."
+                ),
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["recent_quarter_change"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    long_term_finding = AgentFinding(
+        finding_id="finding-aapl-company-style",
+        agent_name="run_10k_agent",
+        company=company,
+        claim=(
+            "The Company designs, manufactures and markets smartphones, personal "
+            "computers, tablets, wearables and accessories, and sells a variety "
+            "of related services."
+        ),
+        summary=(
+            "The Company designs, manufactures and markets smartphones, personal "
+            "computers, tablets, wearables and accessories, and sells a variety "
+            "of related services."
+        ),
+        signal_type=FindingSignalType.FUNDAMENTAL,
+        filing_types=[FilingType.FORM_10K],
+        evidence_refs=[
+            make_evidence(
+                "ev-aapl-company-style",
+                (
+                    "The Company designs, manufactures and markets smartphones, "
+                    "personal computers, tablets, wearables and accessories, and "
+                    "sells a variety of related services."
+                ),
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["long_term_structure"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    packet = AgentOutputPacket(agent_name="mixed", findings=[recent_finding, long_term_finding])
+
+    report = build_verified_report(
+        report_id="report-normalize-duplicate-prefix-and-style",
+        company=company,
+        question="Summarize the latest filings.",
+        packets=[packet],
+        verification_results=[
+            make_result(
+                finding_id="finding-aapl-duplicate-prefix",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            ),
+            make_result(
+                finding_id="finding-aapl-company-style",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            ),
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["recent_quarter_change", "long_term_structure"],
+        ),
+        include_transcript=False,
+    )
+
+    assert "Europe Europe" not in report.executive_summary.summary
+    assert "Apple designs, manufactures and markets smartphones" in (
+        report.final_investment_thesis.thesis
+    )
+    assert "Europe Europe" not in report.evidence_grounded_report.recent_quarter_change[
+        0
+    ].evidence_refs[0].excerpt
+
+
+def test_report_rewrites_gerund_business_clause_in_thesis() -> None:
+    company = Company(cik="0000789019", ticker="MSFT", company_name="Microsoft Corp.")
+    finding = AgentFinding(
+        finding_id="finding-msft-gerund-business-clause",
+        agent_name="run_10k_agent",
+        company=company,
+        claim=(
+            "Making our suite of cloud-based services platform-agnostic, available on "
+            "a wide range of devices and ecosystems, including those of our competitors."
+        ),
+        summary=(
+            "Making our suite of cloud-based services platform-agnostic, available on "
+            "a wide range of devices and ecosystems, including those of our competitors."
+        ),
+        signal_type=FindingSignalType.FUNDAMENTAL,
+        filing_types=[FilingType.FORM_10K],
+        evidence_refs=[
+            make_evidence(
+                "ev-msft-gerund-business-clause",
+                (
+                    "Making our suite of cloud-based services platform-agnostic, "
+                    "available on a wide range of devices and ecosystems, including "
+                    "those of our competitors."
+                ),
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["long_term_structure"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    packet = AgentOutputPacket(agent_name="run_10k_agent", findings=[finding])
+
+    report = build_verified_report(
+        report_id="report-msft-gerund-business-clause",
+        company=company,
+        question="Summarize the latest filings.",
+        packets=[packet],
+        verification_results=[
+            make_result(
+                finding_id="finding-msft-gerund-business-clause",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            )
+        ],
+        coverage_status=finding.coverage_status,
+        include_transcript=False,
+    )
+
+    assert report.executive_summary.summary.startswith(
+        "Microsoft makes its cloud-based services available across a wide range"
+    )
+    assert report.final_investment_thesis.thesis.startswith(
+        "Verified disclosures show that Microsoft makes its cloud-based services available"
+    )
+
+
+def test_report_prefers_clean_8k_claim_over_scaffold_summary() -> None:
+    company = Company(cik="0001321655", ticker="PLTR", company_name="Palantir Technologies Inc.")
+    finding = AgentFinding(
+        finding_id="finding-clean-8k-claim-over-summary",
+        agent_name="run_8k_agent",
+        company=company,
+        claim=(
+            "Palantir Technologies Inc. announced its financial results for the fourth "
+            "quarter and fiscal year ended December 31, 2025, via a press release on "
+            "February 2, 2026."
+        ),
+        summary=(
+            "Item 2.02 (Results of Operations and Financial Condition) disclosed that "
+            "Palantir Technologies Inc. announced its financial results for the fourth "
+            "quarter and fiscal year ended December 31."
+        ),
+        signal_type=FindingSignalType.EVENT,
+        filing_types=[FilingType.FORM_8K],
+        evidence_refs=[
+            EvidenceRef(
+                evidence_id="ev-clean-8k-claim-over-summary",
+                document_id="doc-clean-8k-claim-over-summary",
+                filing_type=FilingType.FORM_8K,
+                excerpt=(
+                    "On February 2, 2026, Palantir Technologies Inc. issued a press "
+                    "release announcing its financial results for the fourth quarter "
+                    "and fiscal year ended December 31, 2025."
+                ),
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["material_events"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    packet = AgentOutputPacket(agent_name="run_8k_agent", findings=[finding])
+
+    report = build_verified_report(
+        report_id="report-clean-8k-claim-over-summary",
+        company=company,
+        question="Summarize the latest filings.",
+        packets=[packet],
+        verification_results=[
+            make_result(
+                finding_id="finding-clean-8k-claim-over-summary",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            )
+        ],
+        coverage_status=finding.coverage_status,
+        include_transcript=False,
+    )
+
+    assert "December 31, 2025" in report.executive_summary.summary
+    assert "Item 2.02" not in report.executive_summary.summary
+
+
+def test_report_replaces_conjunction_truncated_summary_with_full_claim() -> None:
+    company = Company(cik="0001321655", ticker="PLTR", company_name="Palantir Technologies Inc.")
+    finding = AgentFinding(
+        finding_id="finding-truncated-conjunction-summary",
+        agent_name="run_8k_agent",
+        company=company,
+        claim=(
+            "Palantir Technologies Inc. issued a press release announcing its financial "
+            "results for the fourth quarter and fiscal year ended December 31, 2025."
+        ),
+        summary=(
+            "On February 2, 2026, Palantir Technologies Inc. issued a press release "
+            "announcing its financial results for the fourth quarter and."
+        ),
+        signal_type=FindingSignalType.EVENT,
+        filing_types=[FilingType.FORM_8K],
+        evidence_refs=[
+            EvidenceRef(
+                evidence_id="ev-truncated-conjunction-summary",
+                document_id="doc-truncated-conjunction-summary",
+                filing_type=FilingType.FORM_8K,
+                excerpt=(
+                    "On February 2, 2026, Palantir Technologies Inc. issued a press "
+                    "release announcing its financial results for the fourth quarter "
+                    "and fiscal year ended December 31, 2025."
+                ),
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["material_events"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    packet = AgentOutputPacket(agent_name="run_8k_agent", findings=[finding])
+
+    report = build_verified_report(
+        report_id="report-truncated-conjunction-summary",
+        company=company,
+        question="Summarize the latest filings.",
+        packets=[packet],
+        verification_results=[
+            make_result(
+                finding_id="finding-truncated-conjunction-summary",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            )
+        ],
+        coverage_status=finding.coverage_status,
+        include_transcript=False,
+    )
+
+    assert "December 31, 2025" in report.executive_summary.summary
+    assert " and." not in report.executive_summary.summary
+
+
+def test_report_shortens_8k_press_release_phrase_for_readability() -> None:
+    company = Company(cik="0001321655", ticker="PLTR", company_name="Palantir Technologies Inc.")
+    finding = AgentFinding(
+        finding_id="finding-shortened-8k-press-release-phrase",
+        agent_name="run_8k_agent",
+        company=company,
+        claim=(
+            "On February 2, 2026, Palantir Technologies Inc. announced its financial "
+            "results for the fourth quarter and fiscal year ended December 31, 2025, "
+            "via a press release attached as Exhibit 99.1 to an 8-K filing."
+        ),
+        summary="",
+        signal_type=FindingSignalType.EVENT,
+        filing_types=[FilingType.FORM_8K],
+        evidence_refs=[
+            EvidenceRef(
+                evidence_id="ev-shortened-8k-press-release-phrase",
+                document_id="doc-shortened-8k-press-release-phrase",
+                filing_type=FilingType.FORM_8K,
+                excerpt=(
+                    "On February 2, 2026, Palantir Technologies Inc. issued a press "
+                    "release announcing its financial results for the fourth quarter "
+                    "and fiscal year ended December 31, 2025."
+                ),
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["material_events"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    packet = AgentOutputPacket(agent_name="run_8k_agent", findings=[finding])
+
+    report = build_verified_report(
+        report_id="report-shortened-8k-press-release-phrase",
+        company=company,
+        question="Summarize the latest filings.",
+        packets=[packet],
+        verification_results=[
+            make_result(
+                finding_id="finding-shortened-8k-press-release-phrase",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            )
+        ],
+        coverage_status=finding.coverage_status,
+        include_transcript=False,
+    )
+
+    assert "via an 8-K press release" in report.executive_summary.summary
+
+
+def test_report_excludes_weak_item_901_material_event_from_main_body() -> None:
+    company = Company(cik="0001018724", ticker="AMZN", company_name="Amazon.com Inc.")
+    finding = AgentFinding(
+        finding_id="finding-weak-901-exhibit",
+        agent_name="run_8k_agent",
+        company=company,
+        claim='Exhibit filed: "Underwriting."',
+        summary='Exhibit filed: "Underwriting."',
+        signal_type=FindingSignalType.EVENT,
+        filing_types=[FilingType.FORM_8K],
+        evidence_refs=[
+            EvidenceRef(
+                evidence_id="ev-weak-901-exhibit",
+                document_id="doc-weak-901-exhibit",
+                filing_type=FilingType.FORM_8K,
+                excerpt='Exhibit filed: "Underwriting."',
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["material_events", "item_9.01"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.PARTIALLY_SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    packet = AgentOutputPacket(agent_name="run_8k_agent", findings=[finding])
+
+    report = build_verified_report(
+        report_id="report-weak-901-exhibit",
+        company=company,
+        question="Summarize the latest filings.",
+        packets=[packet],
+        verification_results=[
+            make_result(
+                finding_id="finding-weak-901-exhibit",
+                label=VerificationLabel.PARTIALLY_SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            )
+        ],
+        coverage_status=finding.coverage_status,
+        include_transcript=False,
+    )
+
+    assert report.evidence_grounded_report.material_events == []
+
+
+def test_render_report_html_returns_styled_document() -> None:
+    company = Company(cik="0001045810", ticker="NVDA", company_name="NVIDIA Corp.")
+    balance_claim = (
+        "As of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, "
+        "and marketable securities."
+    )
+    finding = AgentFinding(
+        finding_id="finding-html-render",
+        agent_name="run_10q_agent",
+        company=company,
+        claim=balance_claim,
+        summary=balance_claim,
+        signal_type=FindingSignalType.FUNDAMENTAL,
+        filing_types=[FilingType.FORM_10Q],
+        evidence_refs=[
+            EvidenceRef(
+                evidence_id="ev-html-render",
+                document_id="doc-html-render",
+                filing_type=FilingType.FORM_10Q,
+                excerpt=balance_claim,
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["recent_quarter_change"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.HIGH,
+        ),
+    )
+    packet = AgentOutputPacket(agent_name="run_10q_agent", findings=[finding])
+    report = build_verified_report(
+        report_id="report-html-render",
+        company=company,
+        question="Summarize the latest filings.",
+        packets=[packet],
+        verification_results=[
+            make_result(
+                finding_id="finding-html-render",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.HIGH,
+            )
+        ],
+        coverage_status=finding.coverage_status,
+        include_transcript=False,
+    )
+
+    html_text = render_report_html(report)
+
+    assert "<!doctype html>" in html_text.lower()
+    assert 'class="hero"' in html_text
+    assert 'class="claim-card"' in html_text
+    assert 'class="claim-card fill-card"' in html_text
+    assert "Renderer-level fill" in html_text
+    assert "<pre>" not in html_text
+    assert "NVIDIA Corp." in html_text
+
+
+def test_report_cleans_evidence_excerpt_for_presentation() -> None:
+    company = Company(cik="0001321655", ticker="PLTR", company_name="Palantir Technologies Inc.")
+    claim = (
+        "On February 2, 2026, Palantir Technologies Inc. issued a press release "
+        "announcing its financial results for the fourth quarter and fiscal year "
+        "ended December 31, 2025."
+    )
+    finding = AgentFinding(
+        finding_id="finding-clean-evidence",
+        agent_name="run_8k_agent",
+        company=company,
+        claim=claim,
+        summary=claim,
+        signal_type=FindingSignalType.EVENT,
+        filing_types=[FilingType.FORM_8K],
+        evidence_refs=[
+            EvidenceRef(
+                evidence_id="ev-clean-evidence",
+                document_id="doc-clean-evidence",
+                filing_type=FilingType.FORM_8K,
+                excerpt=(
+                    'Palantir Technologies Inc. (the "Company") issued a press release '
+                    "announcing its financial results for the fourth quarter and fiscal "
+                    "year ended December 31, 2025. Additional supporting boilerplate "
+                    "followed in the filing."
+                ),
+            )
+        ],
+        coverage_status=CoverageStatus(
+            label=CoverageLabel.COMPLETE,
+            covered_topics=["material_events"],
+        ),
+        verification_status=VerificationStatus(
+            label=VerificationLabel.SUPPORTED,
+            confidence=ConfidenceLabel.MEDIUM,
+        ),
+    )
+    packet = AgentOutputPacket(agent_name="run_8k_agent", findings=[finding])
+
+    report = build_verified_report(
+        report_id="report-clean-evidence",
+        company=company,
+        question="Summarize the latest filings.",
+        packets=[packet],
+        verification_results=[
+            make_result(
+                finding_id="finding-clean-evidence",
+                label=VerificationLabel.SUPPORTED,
+                confidence=ConfidenceLabel.MEDIUM,
+            )
+        ],
+        coverage_status=finding.coverage_status,
+        include_transcript=False,
+    )
+
+    excerpt = report.evidence_grounded_report.material_events[0].evidence_refs[0].excerpt
+    assert '(the "Company")' not in excerpt
+    assert "Additional supporting boilerplate" not in excerpt
+    assert excerpt.endswith(".")

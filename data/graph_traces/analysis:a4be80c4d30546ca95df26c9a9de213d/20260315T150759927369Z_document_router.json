@@ -1,0 +1,35 @@
+{
+  "thread_id": "analysis:a4be80c4d30546ca95df26c9a9de213d",
+  "node_name": "document_router",
+  "timestamp": "20260315T150759927369Z",
+  "state_summary": {
+    "request_id": "analysis:a4be80c4d30546ca95df26c9a9de213d",
+    "ticker": "PLTR",
+    "completed_steps": [
+      "task_planner"
+    ],
+    "route_plan": [],
+    "shared_memory_count": 2,
+    "agent_packet_count": 1,
+    "verification_result_count": 0,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "partial"
+  },
+  "update_summary": {
+    "keys": [
+      "agent_packets",
+      "completed_steps",
+      "coverage_status",
+      "execution_plan",
+      "route_plan",
+      "routed_tasks",
+      "shared_memory",
+      "updated_at"
+    ],
+    "completed_steps_count": 1,
+    "route_plan_count": 4,
+    "agent_packets_count": 1
+  },
+  "manual_review_requests": []
+}

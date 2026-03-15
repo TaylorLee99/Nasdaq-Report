@@ -37,23 +37,17 @@ echo "[6/6] Running analysis and exporting outputs"
 python3.11 - <<'PY'
 from __future__ import annotations
 
-import html
 import json
 import os
 from pathlib import Path
 
 from app.application import build_analysis_application_service
 from app.domain import AnalysisRunRequest
-from app.reporting import render_report_markdown, serialize_report_json
+from app.reporting import render_report_html, render_report_markdown, serialize_report_json
 
 OUTPUT_DIR = Path(os.environ["OUTPUT_DIR"])
 TICKER = os.environ["TICKER"]
 QUESTION = os.environ["QUESTION"]
-
-try:
-    import markdown as md_lib
-except Exception:
-    md_lib = None
 
 service = build_analysis_application_service()
 job = service.run_analysis(
@@ -79,30 +73,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     encoding="utf-8",
 )
 
-if md_lib is not None:
-    body = md_lib.markdown(markdown_text, extensions=["extra", "sane_lists"])
-else:
-    body = f"<pre>{html.escape(markdown_text)}</pre>"
-
-html_text = f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{html.escape(report.report_id)}</title>
-  <style>
-    body {{ font-family: Georgia, 'Times New Roman', serif; margin: 40px auto; max-width: 900px; line-height: 1.6; color: #1f2937; padding: 0 24px; }}
-    h1, h2, h3 {{ color: #111827; }}
-    code {{ background: #f3f4f6; padding: 0.1rem 0.25rem; border-radius: 4px; }}
-    pre {{ white-space: pre-wrap; word-break: break-word; background: #f9fafb; padding: 16px; border-radius: 8px; }}
-    ul {{ padding-left: 1.25rem; }}
-  </style>
-</head>
-<body>
-{body}
-</body>
-</html>
-"""
+html_text = render_report_html(report)
 (OUTPUT_DIR / f"{TICKER.lower()}_latest_report.html").write_text(html_text, encoding="utf-8")
 
 print(json.dumps(

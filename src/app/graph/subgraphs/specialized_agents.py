@@ -31,7 +31,13 @@ from app.domain import (
     VerificationLabel,
     VerificationStatus,
 )
+from app.graph.ten_q_heuristics import (
+    build_ten_q_recent_change_candidate,
+    is_ten_q_recent_change_candidate_sentence,
+)
 from app.indexing.models import ChunkSearchFilters
+
+SENTENCE_ABBREVIATIONS = ("Corp.", "Inc.", "Ltd.", "Co.")
 
 
 @dataclass(frozen=True)
@@ -72,6 +78,21 @@ class SpecializedAgentRetriever(Protocol):
 
     def retrieve(self, request: AgentRetrievalRequest) -> list[ChunkRecord]:
         """Return metadata-aware, section-aware chunks for the active request."""
+
+
+def _split_sentences(text: str) -> list[str]:
+    normalized = " ".join(text.split()).strip()
+    if not normalized:
+        return []
+    protected = normalized
+    for abbreviation in SENTENCE_ABBREVIATIONS:
+        protected = protected.replace(abbreviation, abbreviation.replace(".", "<prd>"))
+    sentences = [
+        sentence.strip().replace("<prd>", ".")
+        for sentence in re.split(r"(?<=[.!?])\s+", protected)
+        if sentence.strip()
+    ]
+    return sentences
 
 
 class SpecializedAgentModel(Protocol):
@@ -453,6 +474,9 @@ def _output_node(state: SpecializedAgentState, *, profile: AgentProfile) -> dict
         unresolved_items=unresolved_items,
         coverage_label=coverage_label,
     )
+    if profile.agent_name == "run_10q_agent" and not findings:
+        unresolved_items = list(dict.fromkeys([*unresolved_items, "missing_recent_quarter_delta"]))
+        coverage_label = CoverageLabel.PARTIAL
     evidence_refs = _collect_packet_evidence_refs(findings)
     packet = AgentOutputPacket(
         agent_name=profile.agent_name,
@@ -510,6 +534,8 @@ def _build_findings_for_output(
         chunks=chunks,
         provisional_summary=state.get("provisional_summary") or "",
     )
+    if not claim.strip():
+        return []
     return [
         _build_agent_finding(
             state=state,
@@ -538,9 +564,13 @@ def _build_form_aware_claim_and_summary(
     if profile.agent_name in {"run_10k_agent", "run_10q_agent"}:
         if deterministic_sentence is not None:
             return deterministic_sentence, deterministic_sentence
+        if profile.agent_name == "run_10q_agent":
+            normalized_summary = ""
         if normalized_summary:
             return normalized_summary, normalized_summary
         fallback_task = task.task_type.value if task is not None else profile.agent_name
+        if profile.agent_name == "run_10q_agent":
+            return "", ""
         return fallback_task, fallback_task
 
     if normalized_summary:
@@ -559,11 +589,29 @@ def _best_deterministic_sentence(
         normalized = " ".join(chunk.text.split()).strip()
         if not normalized:
             continue
-        for raw_sentence in re.split(r"(?<=[.!?])\s+", normalized):
+        if profile.agent_name == "run_10q_agent":
+            ten_q_candidate = build_ten_q_recent_change_candidate(chunk)
+            if ten_q_candidate is not None:
+                candidates.append(
+                    (
+                        _deterministic_sentence_score(profile, chunk, ten_q_candidate),
+                        ten_q_candidate,
+                    )
+                )
+        for raw_sentence in _split_sentences(normalized):
             sentence = raw_sentence.strip()
             if not sentence:
                 continue
             if _looks_like_truncated_sentence(sentence):
+                continue
+            if (
+                profile.agent_name == "run_10q_agent"
+                and not is_ten_q_recent_change_candidate_sentence(
+                    sentence=sentence,
+                    section_name=chunk.section_name,
+                    section_type=chunk.section_type,
+                )
+            ):
                 continue
             candidates.append((_deterministic_sentence_score(profile, chunk, sentence), sentence))
     if not candidates:
@@ -639,6 +687,7 @@ def _deterministic_sentence_score(
     if _looks_like_low_signal_fragment(normalized):
         return -100
     lowered = normalized.lower()
+    section_lower = chunk.section_name.lower()
     score = 0
 
     if normalized[0].isupper():
@@ -664,11 +713,65 @@ def _deterministic_sentence_score(
         score -= 60
 
     if profile.agent_name == "run_10q_agent":
+        financial_metric_markers = (
+            "revenue",
+            "net sales",
+            "gross margin",
+            "operating income",
+            "operating margin",
+            "net income",
+            "cash flows from operating activities",
+            "cash flow from operating activities",
+            "cash and cash equivalents",
+            "cash, cash equivalents, and marketable securities",
+            "customer count",
+            "customers",
+            "average revenue",
+        )
+        delta_markers = (
+            " increased ",
+            " decrease ",
+            " decreased ",
+            " growth ",
+            " grew ",
+            " relatively flat ",
+            " compared to the prior year period",
+            " compared to the comparable prior year period",
+            " compared to the same quarter",
+            " compared to the same period",
+            " year-over-year ",
+            " q1 ",
+            " q2 ",
+            " q3 ",
+            " q4 ",
+        )
         if any(
             token in lowered
-            for token in ("liquidity", "capital resources", "cash", "revenue", "margin", "quarter")
+            for token in (
+                "liquidity",
+                "capital resources",
+                "cash",
+                "revenue",
+                "margin",
+                "quarter",
+                "net sales",
+                "services",
+                "products",
+                "gross margin",
+                "operating cash flow",
+                "sales increased",
+                "revenue increased",
+                "top twenty customers",
+                "customer count",
+            )
         ):
             score += 20
+        if any(marker in lowered for marker in financial_metric_markers):
+            score += 10
+        if any(marker in f" {lowered} " for marker in delta_markers) or re.search(
+            r"\b\d+%\b", lowered
+        ):
+            score += 25
         if normalized.startswith("As of ") and any(
             token in lowered
             for token in ("cash", "cash equivalents", "marketable securities")
@@ -691,12 +794,109 @@ def _deterministic_sentence_score(
             )
         ):
             score -= 40
+        if any(
+            token in lowered
+            for token in (
+                "critical accounting policies",
+                "critical accounting estimates",
+                "accounting pronouncements",
+                "summary of significant accounting policies",
+                "preparation of condensed consolidated financial statements",
+                "preparation of financial statements",
+                "make estimates and assumptions",
+                "asu ",
+                "prepared in accordance with gaap",
+                "forward-looking statements",
+                "private securities litigation reform act",
+                "future arrangements",
+                "share repurchase program remained available",
+                "amortization of these costs",
+                "estimated life of the products",
+                "contractual obligations and commitments",
+                "commitments and contingencies",
+                "operating lease commitments",
+                "could affect customer demand",
+                "organized our operations into three segments",
+                "these segments reflect the way the company evaluates its business performance",
+                "business seasonality and product introductions",
+                "sales and marketing efforts",
+                "sales and marketing costs",
+                "technology and infrastructure costs",
+            )
+        ):
+            score -= 80
+        if any(
+            token in lowered
+            for token in (
+                "changes in foreign exchange rates",
+                "foreign exchange rates did not significantly impact",
+                "negatively impacted operating income by",
+            )
+        ):
+            score -= 30
+        if re.match(
+            r"^the (increase|decrease) in [a-z0-9 ,&-]+"
+            r"(revenue|net sales|operating income|gross margin|operating cash flow)",
+            lowered,
+        ):
+            score += 18
+        if any(
+            token in lowered
+            for token in (
+                "top twenty customers",
+                "during the period ended",
+                "trailing twelve months ended",
+            )
+        ) and re.search(r"\b\d+%\b", lowered):
+            score += 20
         if "liquidity" in chunk.section_name.lower():
             score += 10
+        if any(
+            token in section_lower
+            for token in (
+                "critical accounting",
+                "accounting pronouncements",
+                "forward-looking",
+                "market risk",
+                "sales and marketing",
+                "business seasonality",
+                "product introductions",
+            )
+        ):
+            score -= 60
+        if any(marker in lowered for marker in financial_metric_markers) and not (
+            any(marker in f" {lowered} " for marker in delta_markers)
+            or re.search(r"\b\d+%\b", lowered)
+            or normalized.startswith("As of ")
+        ):
+            score -= 25
     if profile.agent_name == "run_10k_agent":
         if any(
             token in lowered
-            for token in ("business", "platform", "market", "customer", "segment", "supply", "risk")
+            for token in (
+                "business",
+                "platform",
+                "market",
+                "customer",
+                "segment",
+                "supply",
+                "products",
+                "services",
+                "offers",
+                "provides",
+                "serve",
+                "serves",
+                "software",
+                "cloud",
+                "marketplace",
+                "stores",
+                "advertising",
+                "devices",
+                "infrastructure",
+                "technology company",
+                "designs, manufactures and markets",
+                "sells a variety of related services",
+            )
         ):
             score += 20
         if any(
@@ -734,6 +934,21 @@ def _deterministic_sentence_score(
             )
         ):
             score += 30
+        if any(
+            token in lowered
+            for token in (
+                "built four principal software platforms",
+                "principal software platforms",
+                "we serve",
+                "our products",
+                "our services",
+                "our customers",
+                "operating segments",
+                "marketplace",
+                "cloud",
+            )
+        ):
+            score += 20
         if "two segments" in lowered:
             score -= 12
         if lowered.count(",") >= 4:
@@ -752,8 +967,42 @@ def _deterministic_sentence_score(
             for token in ("china", "license requirements", "alternative products")
         ):
             score -= 20
+        if any(
+            token in lowered
+            for token in (
+                "critical accounting estimates",
+                "critical accounting policies",
+                "market risk",
+                "equity 10% decrease",
+                "foreign exchange rate risk",
+                "interest rate risk",
+                "additional taxes imposed",
+                "could be adversely affected",
+                "forward-looking statements",
+                "private securities litigation reform act",
+                "shareholders of record",
+                "long-term debt is carried at amortized cost",
+                "fluctuations in interest rates do not impact",
+                "our employees are critical to our mission",
+            )
+        ):
+            score -= 80
+        if "human capital" in section_lower:
+            score -= 40
+        if "—" not in chunk.section_name and "--" not in chunk.section_name:
+            score += 10
         if "business" in chunk.section_name.lower():
             score += 10
+        if any(
+            token in section_lower
+            for token in (
+                "market risk",
+                "critical accounting",
+                "risk factors",
+                "forward-looking",
+            )
+        ):
+            score -= 50
     return score
 
 
@@ -765,6 +1014,13 @@ def _looks_like_low_signal_fragment(text: str) -> bool:
         return True
     tokens = normalized.split()
     if len(tokens) <= 2 and all(re.fullmatch(r"[\d.,$()%]+", token) for token in tokens):
+        return True
+    if len(tokens) <= 4 and not any(
+        token.lower() in {"is", "are", "was", "were", "provide", "provides", "offer", "offers",
+                          "design", "designs", "manufacture", "manufactures", "market", "markets",
+                          "sell", "sells", "report", "reports", "serve", "serves"}
+        for token in tokens
+    ):
         return True
     if re.match(r"^(item|part)\s+\d", normalized, flags=re.IGNORECASE):
         return True
@@ -1100,7 +1356,7 @@ def _best_8k_chunk_sentence(chunks: list[ChunkRecord]) -> str | None:
         normalized = " ".join(chunk.text.split()).strip()
         if not normalized:
             continue
-        for raw_sentence in re.split(r"(?<=[.!?])\s+", normalized):
+        for raw_sentence in _split_sentences(normalized):
             sentence = raw_sentence.strip()
             if not sentence:
                 continue
@@ -1140,6 +1396,10 @@ def _score_8k_sentence(sentence: str) -> int:
         score -= 50
     if "compensation committee" in lowered or "variable compensation plan" in lowered:
         score += 15
+    if "closed the sale" in lowered or "completed the sale" in lowered:
+        score += 25
+    if "floating rate notes" in lowered or "fixed-rate notes" in lowered:
+        score += 15
     return score
 
 
@@ -1160,7 +1420,7 @@ def _compose_8k_item_claim(
 def _limit_sentence_count(text: str, *, max_sentences: int) -> str:
     if max_sentences <= 0:
         return ""
-    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    sentences = _split_sentences(text)
     trimmed = [sentence.strip() for sentence in sentences if sentence.strip()]
     if not trimmed:
         return ""
@@ -1168,7 +1428,7 @@ def _limit_sentence_count(text: str, *, max_sentences: int) -> str:
 
 
 def _remove_unsupported_8k_sentences(text: str) -> str:
-    sentences = re.split(r"(?<=[.!?])\s+", text.strip())
+    sentences = _split_sentences(text)
     kept: list[str] = []
     for sentence in sentences:
         stripped = sentence.strip()
@@ -1320,7 +1580,7 @@ def _build_retrieval_query(
                 ticker,
                 "latest quarter",
                 "recent quarter change",
-                "revenue margin liquidity controls",
+                "revenue margin liquidity operating income customer growth controls",
                 "10-Q",
                 question,
                 task_names,
@@ -1358,6 +1618,8 @@ def _build_retrieval_query(
 
 def _retrieval_limit_for_profile(profile: AgentProfile) -> int:
     if profile.agent_name == "run_8k_agent":
+        return 8
+    if profile.agent_name == "run_10q_agent":
         return 8
     return 4
 
@@ -1464,6 +1726,19 @@ def _chunk_alignment_score(*, chunk: ChunkRecord, claim: str) -> int:
         and "cash" in lowered_claim
     ):
         score += 10
+    if (
+        chunk.filing_type == FilingType.FORM_8K
+        and chunk.item_number == "8.01"
+        and _is_8k_debt_offering_claim(claim)
+    ):
+        if any(token in lowered_chunk for token in ("closed the sale", "completed the sale")):
+            score += 40
+        if re.search(r"\bOn [A-Za-z]+ \d{1,2}, \d{4}\b", chunk_text):
+            score += 20
+        if "underwriting agreement" in lowered_chunk and "closed the sale" not in lowered_chunk:
+            score -= 20
+        if re.match(r"^[\d,$ ]+", chunk_text):
+            score -= 25
     if _is_ten_q_liquidity_chunk(chunk):
         if "as of" in lowered_chunk and any(
             token in lowered_chunk
@@ -1493,7 +1768,27 @@ def _best_chunk_excerpt_for_claim(*, chunk: ChunkRecord, claim: str) -> str | No
         exhibit_description = _extract_exhibit_description([chunk])
         if exhibit_description is not None:
             return f'Exhibit filed: "{exhibit_description}."'
-    sentences = [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", normalized)]
+    if (
+        chunk.filing_type == FilingType.FORM_8K
+        and chunk.item_number == "8.01"
+        and _is_8k_debt_offering_claim(claim)
+    ):
+        match = re.search(
+            r"(On [A-Za-z]+ \d{1,2}, \d{4}, .*?(?:closed|completed) the sale of .*?)(?:\.\s|$)",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        if match is not None:
+            cleaned_sentence = _clean_evidence_excerpt(
+                chunk=chunk,
+                excerpt=match.group(1).strip() + ".",
+            )
+            return (
+                cleaned_sentence
+                if len(cleaned_sentence) <= 240
+                else f"{cleaned_sentence[:237]}..."
+            )
+    sentences = [sentence.strip() for sentence in _split_sentences(normalized)]
     scored = [
         (_sentence_alignment_score(sentence=sentence, claim=claim, chunk=chunk), sentence)
         for sentence in sentences
@@ -1561,7 +1856,28 @@ def _clean_evidence_excerpt(*, chunk: ChunkRecord, excerpt: str) -> str:
             count=1,
             flags=re.IGNORECASE,
         ).strip()
+    if chunk.filing_type == FilingType.FORM_8K:
+        cleaned = re.sub(
+            r"^\(including its subsidiaries, [^)]+\)\s+",
+            "",
+            cleaned,
+            flags=re.IGNORECASE,
+        ).strip()
     return cleaned
+
+
+def _is_8k_debt_offering_claim(claim: str) -> bool:
+    lowered = claim.lower()
+    markers = (
+        "closed the sale",
+        "completed the sale",
+        "floating rate notes",
+        "fixed and floating rate notes",
+        "series of notes",
+        "debt offering",
+        "maturities up to",
+    )
+    return any(marker in lowered for marker in markers)
 
 
 def _looks_like_accounting_pronouncement_excerpt(excerpt: str) -> bool:

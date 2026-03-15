@@ -1,0 +1,6 @@
+snapshot_date,ticker,cik,company_name,exchange,is_domestic_filer
+2024-12-31,MSFT,0000789019,Microsoft Corp.,NASDAQ,true
+2024-12-31,AMZN,0001018724,Amazon.com Inc.,NASDAQ,true
+2024-12-31,AAPL,0000320193,Apple Inc.,NASDAQ,true
+2024-12-31,PLTR,0001321655,Palantir Technologies Inc.,NASDAQ,true
+2024-12-31,NVDA,0001045810,NVIDIA Corp.,NASDAQ,true

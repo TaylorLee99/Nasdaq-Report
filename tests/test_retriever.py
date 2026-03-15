@@ -10,6 +10,7 @@ from app.domain import (
     ChunkRecord,
     Company,
     ConfidenceLabel,
+    DocumentSectionType,
     FilingType,
     UniverseSnapshot,
     UniverseSnapshotConstituent,
@@ -202,6 +203,90 @@ def test_indexed_chunk_retriever_applies_section_aware_filters(
     results = retriever.retrieve(request)
 
     assert results
+    assert [chunk.chunk_id for chunk in results] == ["chunk-liquidity"]
+
+
+def test_indexed_chunk_retriever_excludes_notes_subsections_from_liquidity_matches(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_environment(monkeypatch, tmp_path)
+    settings = get_settings()
+    engine = create_engine_from_settings(settings)
+    Base.metadata.create_all(engine)
+    session_factory = make_session_factory(settings)
+    universe_repository = UniverseRepository(session_factory)
+    company = seed_company_master(universe_repository)
+    repository = PgVectorChunkRepository(session_factory)
+    embedding_provider = FakeEmbeddingProvider(dimensions=settings.indexing.embedding_dimensions)
+    texts = [
+        (
+            "As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, and "
+            "marketable securities."
+        ),
+        (
+            "Recent accounting pronouncements did not materially affect the condensed "
+            "consolidated financial statements."
+        ),
+    ]
+    embeddings = embedding_provider.embed_texts(texts)
+    repository.replace_document_chunks(
+        document_id="doc-liquidity-vs-notes",
+        chunks=[
+            ChunkRecord(
+                chunk_id="chunk-liquidity",
+                document_id="doc-liquidity-vs-notes",
+                section_id="section-liquidity",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001045810-25-000230",
+                filing_date=date(2025, 11, 19),
+                report_period=date(2025, 10, 26),
+                section_name="Liquidity and Capital Resources",
+                section_type=DocumentSectionType.LIQUIDITY,
+                text=texts[0],
+                token_count=17,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[0],
+                embedding_key=embedding_provider.model_name,
+            ),
+            ChunkRecord(
+                chunk_id="chunk-liquidity-notes",
+                document_id="doc-liquidity-vs-notes",
+                section_id="section-liquidity-notes",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001045810-25-000230",
+                filing_date=date(2025, 11, 19),
+                report_period=date(2025, 10, 26),
+                section_name="Liquidity and Capital Resources — Recent Accounting Pronouncements",
+                section_type=DocumentSectionType.NOTES,
+                text=texts[1],
+                token_count=13,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[1],
+                embedding_key=embedding_provider.model_name,
+            ),
+        ],
+    )
+    retriever = IndexedChunkRetriever(
+        vector_repository=repository,
+        embedding_provider=embedding_provider,
+    )
+
+    results = retriever.retrieve(
+        {
+            "query": "latest quarter liquidity cash capital resources",
+            "filters": ChunkSearchFilters(
+                ticker="NVDA",
+                filing_types=[FilingType.FORM_10Q],
+            ),
+            "section_names": ("Liquidity and Capital Resources",),
+            "transcript_segment_types": (),
+            "limit": 2,
+        }
+    )
+
     assert [chunk.chunk_id for chunk in results] == ["chunk-liquidity"]
 
 
@@ -779,6 +864,641 @@ def test_indexed_chunk_retriever_excludes_ten_q_event_style_chunks_for_liquidity
     assert [chunk.chunk_id for chunk in results] == ["chunk-liquidity-balance"]
 
 
+def test_indexed_chunk_retriever_excludes_ten_q_commitment_chunks_for_recent_quarter_queries(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_environment(monkeypatch, tmp_path)
+    settings = get_settings()
+    engine = create_engine_from_settings(settings)
+    Base.metadata.create_all(engine)
+    session_factory = make_session_factory(settings)
+    universe_repository = UniverseRepository(session_factory)
+    company = seed_company_master(universe_repository)
+    repository = PgVectorChunkRepository(session_factory)
+    embedding_provider = FakeEmbeddingProvider(dimensions=settings.indexing.embedding_dimensions)
+    texts = [
+        (
+            "North America sales increased 11% in Q3 2025, and 10% for the nine months "
+            "ended September 30, 2025 compared to the prior year period."
+        ),
+        (
+            "Contractual Obligations and Commitments primarily consist of operating lease "
+            "commitments and purchase commitments related to cloud hosting services."
+        ),
+    ]
+    embeddings = embedding_provider.embed_texts(texts)
+    repository.replace_document_chunks(
+        document_id="doc-10q-recent-quarter-vs-commitments",
+        chunks=[
+            ChunkRecord(
+                chunk_id="chunk-recent-quarter",
+                document_id="doc-10q-recent-quarter-vs-commitments",
+                section_id="section-recent-quarter",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001018724-25-000123",
+                filing_date=date(2025, 11, 1),
+                report_period=date(2025, 9, 30),
+                section_name=(
+                    "Management's Discussion and Analysis of Financial Condition and "
+                    "Results of Operations"
+                ),
+                section_type=DocumentSectionType.MDA,
+                text=texts[0],
+                token_count=24,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[0],
+                embedding_key=embedding_provider.model_name,
+            ),
+            ChunkRecord(
+                chunk_id="chunk-commitments",
+                document_id="doc-10q-recent-quarter-vs-commitments",
+                section_id="section-commitments",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001018724-25-000123",
+                filing_date=date(2025, 11, 1),
+                report_period=date(2025, 9, 30),
+                section_name="Liquidity and Capital Resources",
+                section_type=DocumentSectionType.LIQUIDITY,
+                text=texts[1],
+                token_count=18,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[1],
+                embedding_key=embedding_provider.model_name,
+            ),
+        ],
+    )
+    retriever = IndexedChunkRetriever(
+        vector_repository=repository,
+        embedding_provider=embedding_provider,
+    )
+
+    results = retriever.retrieve(
+        {
+            "query": "latest quarter recent quarter change revenue margin 10-Q",
+            "filters": ChunkSearchFilters(
+                ticker="NVDA",
+                filing_types=[FilingType.FORM_10Q],
+            ),
+            "section_names": (
+                (
+                    "Management's Discussion and Analysis of Financial Condition and "
+                    "Results of Operations"
+                ),
+                "Liquidity and Capital Resources",
+            ),
+            "transcript_segment_types": (),
+            "limit": 2,
+        }
+    )
+
+    assert [chunk.chunk_id for chunk in results] == ["chunk-recent-quarter"]
+
+
+def test_indexed_chunk_retriever_prefers_delta_sentence_over_segment_structure_for_recent_quarter(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_environment(monkeypatch, tmp_path)
+    settings = get_settings()
+    engine = create_engine_from_settings(settings)
+    Base.metadata.create_all(engine)
+    session_factory = make_session_factory(settings)
+    universe_repository = UniverseRepository(session_factory)
+    company = seed_company_master(universe_repository)
+    repository = PgVectorChunkRepository(session_factory)
+    embedding_provider = FakeEmbeddingProvider(dimensions=settings.indexing.embedding_dimensions)
+    texts = [
+        (
+            "We have organized our operations into three segments: North America, "
+            "International, and AWS."
+        ),
+        (
+            "North America sales increased 11% in Q3 2025, compared to the comparable "
+            "prior year period."
+        ),
+    ]
+    embeddings = embedding_provider.embed_texts(texts)
+    repository.replace_document_chunks(
+        document_id="doc-10q-segment-vs-delta",
+        chunks=[
+            ChunkRecord(
+                chunk_id="chunk-segment-structure",
+                document_id="doc-10q-segment-vs-delta",
+                section_id="section-segment-structure",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001018724-25-000123",
+                filing_date=date(2025, 11, 1),
+                report_period=date(2025, 9, 30),
+                section_name="Liquidity and Capital Resources — Results of Operations",
+                section_type=DocumentSectionType.MDA,
+                text=texts[0],
+                token_count=14,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[0],
+                embedding_key=embedding_provider.model_name,
+            ),
+            ChunkRecord(
+                chunk_id="chunk-delta-quarter",
+                document_id="doc-10q-segment-vs-delta",
+                section_id="section-delta-quarter",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001018724-25-000123",
+                filing_date=date(2025, 11, 1),
+                report_period=date(2025, 9, 30),
+                section_name="Liquidity and Capital Resources — Results of Operations",
+                section_type=DocumentSectionType.MDA,
+                text=texts[1],
+                token_count=15,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[1],
+                embedding_key=embedding_provider.model_name,
+            ),
+        ],
+    )
+    retriever = IndexedChunkRetriever(
+        vector_repository=repository,
+        embedding_provider=embedding_provider,
+    )
+
+    results = retriever.retrieve(
+        {
+            "query": "AMZN latest quarter recent quarter change revenue margin liquidity 10-Q",
+            "filters": ChunkSearchFilters(
+                ticker="NVDA",
+                filing_types=[FilingType.FORM_10Q],
+            ),
+            "section_names": (
+                (
+                    "Management's Discussion and Analysis of Financial Condition and "
+                    "Results of Operations"
+                ),
+                "Liquidity and Capital Resources",
+            ),
+            "transcript_segment_types": (),
+            "limit": 2,
+        }
+    )
+
+    assert [chunk.chunk_id for chunk in results] == ["chunk-delta-quarter"]
+
+
+def test_indexed_chunk_retriever_excludes_legal_and_note_reference_chunks_for_recent_quarter(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_environment(monkeypatch, tmp_path)
+    settings = get_settings()
+    engine = create_engine_from_settings(settings)
+    Base.metadata.create_all(engine)
+    session_factory = make_session_factory(settings)
+    universe_repository = UniverseRepository(session_factory)
+    company = seed_company_master(universe_repository)
+    repository = PgVectorChunkRepository(session_factory)
+    embedding_provider = FakeEmbeddingProvider(dimensions=settings.indexing.embedding_dimensions)
+    texts = [
+        (
+            "The outcomes of legal proceedings and claims brought against us are subject "
+            "to significant uncertainty."
+        ),
+        "See Item 1 of Part I, Financial Statements — Note 8 — Segment Information.",
+        "Commercial customer count increased 27% year-over-year in the quarter.",
+    ]
+    embeddings = embedding_provider.embed_texts(texts)
+    repository.replace_document_chunks(
+        document_id="doc-10q-bad-vs-good-recent-quarter",
+        chunks=[
+            ChunkRecord(
+                chunk_id="chunk-legal-proceedings",
+                document_id="doc-10q-bad-vs-good-recent-quarter",
+                section_id="section-legal-proceedings",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001193125-26-027207",
+                filing_date=date(2025, 11, 4),
+                report_period=date(2025, 9, 30),
+                section_name="Management's Discussion and Analysis — Legal Proceedings",
+                section_type=DocumentSectionType.NOTES,
+                text=texts[0],
+                token_count=14,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[0],
+                embedding_key=embedding_provider.model_name,
+            ),
+            ChunkRecord(
+                chunk_id="chunk-note-reference",
+                document_id="doc-10q-bad-vs-good-recent-quarter",
+                section_id="section-note-reference",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001018724-25-000123",
+                filing_date=date(2025, 11, 4),
+                report_period=date(2025, 9, 30),
+                section_name="Liquidity and Capital Resources — Segment Information",
+                section_type=DocumentSectionType.NOTES,
+                text=texts[1],
+                token_count=12,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[1],
+                embedding_key=embedding_provider.model_name,
+            ),
+            ChunkRecord(
+                chunk_id="chunk-quarter-delta",
+                document_id="doc-10q-bad-vs-good-recent-quarter",
+                section_id="section-quarter-delta",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0001321655-25-000131",
+                filing_date=date(2025, 11, 4),
+                report_period=date(2025, 9, 30),
+                section_name=(
+                    "Management's Discussion and Analysis of Financial Condition and "
+                    "Results of Operations"
+                ),
+                section_type=DocumentSectionType.MDA,
+                text=texts[2],
+                token_count=9,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[2],
+                embedding_key=embedding_provider.model_name,
+            ),
+        ],
+    )
+    retriever = IndexedChunkRetriever(
+        vector_repository=repository,
+        embedding_provider=embedding_provider,
+    )
+
+    results = retriever.retrieve(
+        {
+            "query": "latest quarter recent quarter change revenue margin liquidity 10-Q",
+            "filters": ChunkSearchFilters(
+                ticker="NVDA",
+                filing_types=[FilingType.FORM_10Q],
+            ),
+            "section_names": (
+                (
+                    "Management's Discussion and Analysis of Financial Condition and "
+                    "Results of Operations"
+                ),
+                "Liquidity and Capital Resources",
+            ),
+            "transcript_segment_types": (),
+            "limit": 3,
+        }
+    )
+
+    assert [chunk.chunk_id for chunk in results] == ["chunk-quarter-delta"]
+
+
+def test_indexed_chunk_retriever_keeps_strong_delta_sentence_from_macro_subsection(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_environment(monkeypatch, tmp_path)
+    settings = get_settings()
+    engine = create_engine_from_settings(settings)
+    Base.metadata.create_all(engine)
+    session_factory = make_session_factory(settings)
+    universe_repository = UniverseRepository(session_factory)
+    company = seed_company_master(universe_repository)
+    repository = PgVectorChunkRepository(session_factory)
+    embedding_provider = FakeEmbeddingProvider(dimensions=settings.indexing.embedding_dimensions)
+    texts = [
+        "Macroeconomic conditions could materially affect the Company in future periods.",
+        (
+            "Europe net sales increased during the first quarter of 2026 compared to the "
+            "same quarter in 2025 primarily due to higher net sales of iPhone and Services."
+        ),
+    ]
+    embeddings = embedding_provider.embed_texts(texts)
+    repository.replace_document_chunks(
+        document_id="doc-10q-macro-delta-filter",
+        chunks=[
+            ChunkRecord(
+                chunk_id="chunk-macro-boilerplate",
+                document_id="doc-10q-macro-delta-filter",
+                section_id="section-macro-boilerplate",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000320193-26-000006",
+                filing_date=date(2026, 1, 30),
+                report_period=date(2025, 12, 27),
+                section_name=(
+                    "Item 2. Management’s Discussion and Analysis of Financial Condition "
+                    "and Results of Operations — Macroeconomic Conditions"
+                ),
+                section_type=DocumentSectionType.MDA,
+                text=texts[0],
+                token_count=11,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[0],
+                embedding_key=embedding_provider.model_name,
+            ),
+            ChunkRecord(
+                chunk_id="chunk-macro-delta",
+                document_id="doc-10q-macro-delta-filter",
+                section_id="section-macro-delta",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000320193-26-000006",
+                filing_date=date(2026, 1, 30),
+                report_period=date(2025, 12, 27),
+                section_name=(
+                    "Item 2. Management’s Discussion and Analysis of Financial Condition "
+                    "and Results of Operations — Macroeconomic Conditions"
+                ),
+                section_type=DocumentSectionType.MDA,
+                text=texts[1],
+                token_count=24,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[1],
+                embedding_key=embedding_provider.model_name,
+            ),
+        ],
+    )
+    retriever = IndexedChunkRetriever(
+        vector_repository=repository,
+        embedding_provider=embedding_provider,
+    )
+
+    results = retriever.retrieve(
+        {
+            "query": (
+                "AAPL latest quarter recent quarter change revenue margin "
+                "operating income customer growth 10-Q"
+            ),
+            "filters": ChunkSearchFilters(
+                ticker="NVDA",
+                filing_types=[FilingType.FORM_10Q],
+            ),
+            "section_names": (
+                (
+                    "Management's Discussion and Analysis of Financial Condition and "
+                    "Results of Operations"
+                ),
+                "Liquidity and Capital Resources",
+            ),
+            "transcript_segment_types": (),
+            "limit": 2,
+        }
+    )
+
+    assert [chunk.chunk_id for chunk in results] == ["chunk-macro-delta"]
+
+
+def test_indexed_chunk_retriever_excludes_ten_q_accounting_policy_chunks_for_recent_quarter_queries(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_environment(monkeypatch, tmp_path)
+    settings = get_settings()
+    engine = create_engine_from_settings(settings)
+    Base.metadata.create_all(engine)
+    session_factory = make_session_factory(settings)
+    universe_repository = UniverseRepository(session_factory)
+    company = seed_company_master(universe_repository)
+    repository = PgVectorChunkRepository(session_factory)
+    embedding_provider = FakeEmbeddingProvider(dimensions=settings.indexing.embedding_dimensions)
+    texts = [
+        (
+            "The Company will adopt ASU 2024-03 in its fourth quarter of 2028 using a "
+            "prospective transition method."
+        ),
+        (
+            "As of September 30, 2025, cash, cash equivalents, and marketable securities "
+            "increased to support product investment and operating needs."
+        ),
+    ]
+    embeddings = embedding_provider.embed_texts(texts)
+    repository.replace_document_chunks(
+        document_id="doc-10q-accounting-filter",
+        chunks=[
+            ChunkRecord(
+                chunk_id="chunk-accounting-policy",
+                document_id="doc-10q-accounting-filter",
+                section_id="section-accounting-policy",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000320193-26-000006",
+                filing_date=date(2026, 1, 30),
+                report_period=date(2025, 12, 27),
+                section_name="Critical Accounting Policies and Estimates",
+                text=texts[0],
+                token_count=17,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[0],
+                embedding_key=embedding_provider.model_name,
+            ),
+            ChunkRecord(
+                chunk_id="chunk-quarterly-operating",
+                document_id="doc-10q-accounting-filter",
+                section_id="section-quarterly-operating",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000320193-26-000006",
+                filing_date=date(2026, 1, 30),
+                report_period=date(2025, 12, 27),
+                section_name="Liquidity and Capital Resources",
+                text=texts[1],
+                token_count=18,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[1],
+                embedding_key=embedding_provider.model_name,
+            ),
+        ],
+    )
+    retriever = IndexedChunkRetriever(
+        vector_repository=repository,
+        embedding_provider=embedding_provider,
+    )
+
+    results = retriever.retrieve(
+        {
+            "query": "AAPL latest quarter recent quarter change revenue margin liquidity 10-Q",
+            "filters": ChunkSearchFilters(
+                ticker="NVDA",
+                filing_types=[FilingType.FORM_10Q],
+            ),
+            "section_names": (
+                (
+                    "Management's Discussion and Analysis of Financial Condition "
+                    "and Results of Operations"
+                ),
+                "Liquidity and Capital Resources",
+                "Controls and Procedures",
+                "Financial Statements",
+            ),
+            "transcript_segment_types": (),
+            "limit": 2,
+        }
+    )
+
+    assert [chunk.chunk_id for chunk in results] == ["chunk-quarterly-operating"]
+
+
+def test_indexed_chunk_retriever_keeps_ten_q_candidate_chunks_before_fragment_filter(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_environment(monkeypatch, tmp_path)
+    settings = get_settings()
+    engine = create_engine_from_settings(settings)
+    Base.metadata.create_all(engine)
+    session_factory = make_session_factory(settings)
+    universe_repository = UniverseRepository(session_factory)
+    company = seed_company_master(universe_repository)
+    repository = PgVectorChunkRepository(session_factory)
+    embedding_provider = FakeEmbeddingProvider(dimensions=settings.indexing.embedding_dimensions)
+    texts = [
+        (
+            "We have organized our operations into three segments: North America, "
+            "International, and AWS. These segments reflect the way the Company "
+            "evaluates its business performance and manages its operations."
+        ),
+        "Operating income $ 20,599 $ 16,885 22%",
+    ]
+    embeddings = embedding_provider.embed_texts(texts)
+    repository.replace_document_chunks(
+        document_id="doc-10q-candidate-preserve",
+        chunks=[
+            ChunkRecord(
+                chunk_id="chunk-structure-overview",
+                document_id="doc-10q-candidate-preserve",
+                section_id="section-structure-overview",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000789019-26-000001",
+                filing_date=date(2026, 1, 29),
+                report_period=date(2025, 12, 31),
+                section_name="Liquidity and Capital Resources — Results of Operations",
+                section_type=DocumentSectionType.LIQUIDITY,
+                text=texts[0],
+                token_count=30,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[0],
+                embedding_key=embedding_provider.model_name,
+            ),
+            ChunkRecord(
+                chunk_id="chunk-operating-income-row",
+                document_id="doc-10q-candidate-preserve",
+                section_id="section-operating-income-row",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000789019-26-000001",
+                filing_date=date(2026, 1, 29),
+                report_period=date(2025, 12, 31),
+                section_name="ITEM 2. MANAGEMENT’S DISCUSSION AND ANALYSIS OF — OVERVIEW",
+                section_type=DocumentSectionType.MDA,
+                text=texts[1],
+                token_count=9,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[1],
+                embedding_key=embedding_provider.model_name,
+            ),
+        ],
+    )
+    retriever = IndexedChunkRetriever(
+        vector_repository=repository,
+        embedding_provider=embedding_provider,
+    )
+
+    results = retriever.retrieve(
+        {
+            "query": (
+                "MSFT latest quarter recent quarter change revenue margin "
+                "liquidity operating income customer growth 10-Q"
+            ),
+            "filters": ChunkSearchFilters(
+                ticker="NVDA",
+                filing_types=[FilingType.FORM_10Q],
+            ),
+            "section_names": (
+                (
+                    "Management's Discussion and Analysis of Financial Condition and "
+                    "Results of Operations"
+                ),
+                "Liquidity and Capital Resources",
+            ),
+            "transcript_segment_types": (),
+            "limit": 2,
+        }
+    )
+
+    assert [chunk.chunk_id for chunk in results] == ["chunk-operating-income-row"]
+
+
+def test_indexed_chunk_retriever_does_not_fallback_to_all_chunks_when_no_section_matches(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_environment(monkeypatch, tmp_path)
+    settings = get_settings()
+    engine = create_engine_from_settings(settings)
+    Base.metadata.create_all(engine)
+    session_factory = make_session_factory(settings)
+    universe_repository = UniverseRepository(session_factory)
+    company = seed_company_master(universe_repository)
+    repository = PgVectorChunkRepository(session_factory)
+    embedding_provider = FakeEmbeddingProvider(dimensions=settings.indexing.embedding_dimensions)
+    text = (
+        "Note 1, Summary of Significant Accounting Policies, describes the significant "
+        "accounting policies and methods used in the preparation of the Company’s "
+        "condensed consolidated financial statements."
+    )
+    embedding = embedding_provider.embed_texts([text])[0]
+    repository.replace_document_chunks(
+        document_id="doc-10q-no-section-fallback",
+        chunks=[
+            ChunkRecord(
+                chunk_id="chunk-note-only",
+                document_id="doc-10q-no-section-fallback",
+                section_id="section-note-only",
+                company=company,
+                filing_type=FilingType.FORM_10Q,
+                accession_number="0000320193-26-000006",
+                filing_date=date(2026, 1, 30),
+                report_period=date(2025, 12, 27),
+                section_name="Notes to Condensed Consolidated Financial Statements (Unaudited)",
+                text=text,
+                token_count=24,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embedding,
+                embedding_key=embedding_provider.model_name,
+            ),
+        ],
+    )
+    retriever = IndexedChunkRetriever(
+        vector_repository=repository,
+        embedding_provider=embedding_provider,
+    )
+
+    results = retriever.retrieve(
+        {
+            "query": "AAPL latest quarter recent quarter change revenue margin liquidity 10-Q",
+            "filters": ChunkSearchFilters(
+                ticker="NVDA",
+                filing_types=[FilingType.FORM_10Q],
+            ),
+            "section_names": (
+                (
+                    "Management's Discussion and Analysis of Financial Condition "
+                    "and Results of Operations"
+                ),
+                "Liquidity and Capital Resources",
+            ),
+            "transcript_segment_types": (),
+            "limit": 2,
+        }
+    )
+
+    assert results == []
+
+
 def test_indexed_chunk_retriever_prefers_business_section_for_10k_structure_query(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -862,7 +1582,93 @@ def test_indexed_chunk_retriever_prefers_business_section_for_10k_structure_quer
         }
     )
 
-    assert [chunk.chunk_id for chunk in results] == ["chunk-business", "chunk-risk"]
+    assert [chunk.chunk_id for chunk in results] == ["chunk-business"]
+
+
+def test_indexed_chunk_retriever_excludes_ten_k_market_risk_chunks_for_structure_queries(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    configure_environment(monkeypatch, tmp_path)
+    settings = get_settings()
+    engine = create_engine_from_settings(settings)
+    Base.metadata.create_all(engine)
+    session_factory = make_session_factory(settings)
+    universe_repository = UniverseRepository(session_factory)
+    company = seed_company_master(universe_repository)
+    repository = PgVectorChunkRepository(session_factory)
+    embedding_provider = FakeEmbeddingProvider(dimensions=settings.indexing.embedding_dimensions)
+    texts = [
+        (
+            "Equity 10% decrease in equity market prices would reduce earnings and other "
+            "income in the current fiscal year."
+        ),
+        (
+            "Microsoft provides cloud-based and productivity software services to commercial "
+            "and consumer customers across a broad portfolio."
+        ),
+    ]
+    embeddings = embedding_provider.embed_texts(texts)
+    repository.replace_document_chunks(
+        document_id="doc-10k-non-structural-filter",
+        chunks=[
+            ChunkRecord(
+                chunk_id="chunk-market-risk-fragment",
+                document_id="doc-10k-non-structural-filter",
+                section_id="section-market-risk-fragment",
+                company=company,
+                filing_type=FilingType.FORM_10K,
+                accession_number="0000950170-25-100235",
+                filing_date=date(2025, 7, 30),
+                report_period=date(2025, 6, 30),
+                section_name="Item 7A. Quantitative and Qualitative Disclosures about Market Risk",
+                text=texts[0],
+                token_count=18,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[0],
+                embedding_key=embedding_provider.model_name,
+            ),
+            ChunkRecord(
+                chunk_id="chunk-business-description",
+                document_id="doc-10k-non-structural-filter",
+                section_id="section-business-description",
+                company=company,
+                filing_type=FilingType.FORM_10K,
+                accession_number="0000950170-25-100235",
+                filing_date=date(2025, 7, 30),
+                report_period=date(2025, 6, 30),
+                section_name="Item 1. Business",
+                text=texts[1],
+                token_count=17,
+                parse_confidence=ConfidenceLabel.HIGH,
+                embedding=embeddings[1],
+                embedding_key=embedding_provider.model_name,
+            ),
+        ],
+    )
+    retriever = IndexedChunkRetriever(
+        vector_repository=repository,
+        embedding_provider=embedding_provider,
+    )
+
+    results = retriever.retrieve(
+        {
+            "query": "MSFT long term structure business model products services segments 10-K",
+            "filters": ChunkSearchFilters(
+                ticker="NVDA",
+                filing_types=[FilingType.FORM_10K],
+            ),
+            "section_names": (
+                "Item 1. Business",
+                "Item 1A. Risk Factors",
+                "Item 7. Management's Discussion and Analysis",
+            ),
+            "transcript_segment_types": (),
+            "limit": 2,
+        }
+    )
+
+    assert [chunk.chunk_id for chunk in results] == ["chunk-business-description"]
 
 
 def test_indexed_chunk_retriever_penalizes_regional_anecdotes_for_10k_structure_query(

@@ -1,0 +1,316 @@
+{
+  "analysis_id": "analysis:e44c4cd3e80447e9a9efbf05a8943144",
+  "ticker": "AAPL",
+  "cik": "0000320193",
+  "question": "Build a valuation-free disclosure-grounded thesis using 10-K, 10-Q, and 8-K only.",
+  "status": "completed",
+  "document_signals": [
+    {
+      "filing_type": "10-K",
+      "available": true,
+      "document_date": "2025-10-31",
+      "report_period": "2025-09-27",
+      "parse_confidence": "high",
+      "notes": "Latest 10-K metadata available."
+    },
+    {
+      "filing_type": "10-Q",
+      "available": true,
+      "document_date": "2026-01-30",
+      "report_period": "2025-12-27",
+      "parse_confidence": "high",
+      "notes": "Latest 10-Q metadata available."
+    },
+    {
+      "filing_type": "8-K",
+      "available": true,
+      "document_date": "2026-02-24",
+      "report_period": "2026-02-24",
+      "parse_confidence": "high",
+      "notes": "Latest 8-K metadata available."
+    },
+    {
+      "filing_type": "EARNINGS_CALL",
+      "available": false,
+      "document_date": null,
+      "report_period": null,
+      "parse_confidence": "low",
+      "notes": "Transcript channel not requested."
+    }
+  ],
+  "final_report": {
+    "report_id": "report:analysis:e44c4cd3e80447e9a9efbf05a8943144",
+    "generated_at": "2026-03-15T15:11:14.509585Z",
+    "company": {
+      "cik": "0000320193",
+      "ticker": "AAPL",
+      "company_name": "Apple Inc.",
+      "exchange": "NASDAQ",
+      "is_domestic_filer": true,
+      "latest_snapshot_date": "2024-12-31",
+      "universe_name": "NASDAQ_100",
+      "snapshot_label": null
+    },
+    "analysis_scope": {
+      "question": "Build a valuation-free disclosure-grounded thesis using 10-K, 10-Q, and 8-K only.",
+      "as_of_date": null,
+      "allowed_sources": [
+        "10-K",
+        "10-Q",
+        "8-K"
+      ],
+      "transcript_included": false,
+      "max_reretrievals": 2
+    },
+    "coverage_summary": {
+      "coverage_label": "complete",
+      "covered_channels": [
+        "10-K",
+        "10-Q",
+        "8-K"
+      ],
+      "missing_channels": [],
+      "covered_topics": [
+        "material_events",
+        "item_9.01",
+        "recent_quarter_change",
+        "long_term_structure",
+        "item_5.07"
+      ],
+      "missing_topics": [],
+      "notes": "Included claims: 4. Excluded claims: 0."
+    },
+    "executive_summary": {
+      "summary": "Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services. Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services. At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory.",
+      "evidence_refs": [
+        {
+          "evidence_id": "run_10q_agent:0000320193-26-000006:0000320193-26-000006:section:4:chunk:4",
+          "document_id": "0000320193-26-000006",
+          "filing_type": "10-Q",
+          "excerpt": "Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.",
+          "section_id": "0000320193-26-000006:section:4",
+          "chunk_id": "0000320193-26-000006:0000320193-26-000006:section:4:chunk:4",
+          "page_number": null,
+          "char_start": 45343,
+          "char_end": 46526,
+          "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000006/aapl-20251227.htm"
+        },
+        {
+          "evidence_id": "run_10k_agent:0000320193-25-000079:0000320193-25-000079:section:1:chunk:1",
+          "document_id": "0000320193-25-000079",
+          "filing_type": "10-K",
+          "excerpt": "The Company designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.",
+          "section_id": "0000320193-25-000079:section:1",
+          "chunk_id": "0000320193-25-000079:0000320193-25-000079:section:1:chunk:1",
+          "page_number": null,
+          "char_start": 23435,
+          "char_end": 23690,
+          "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm"
+        },
+        {
+          "evidence_id": "run_8k_agent:0001140361-26-006577:0001140361-26-006577:section:1:chunk:5",
+          "document_id": "0001140361-26-006577",
+          "filing_type": "8-K",
+          "excerpt": "A management proposal to ratify the appointment of Ernst & Young LLP as Apple’s independent registered public accounting firm for fiscal year 2026 was approved.",
+          "section_id": "0001140361-26-006577:section:1",
+          "chunk_id": "0001140361-26-006577:0001140361-26-006577:section:1:chunk:5",
+          "page_number": null,
+          "char_start": 9369,
+          "char_end": 10492,
+          "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000114036126006577/ef20060722_8k.htm"
+        }
+      ],
+      "verification_label": "partially_supported",
+      "confidence": "medium"
+    },
+    "key_risks": [],
+    "key_opportunities": [],
+    "watchpoints": [
+      {
+        "finding_id": "analysis:e44c4cd3e80447e9a9efbf05a8943144:run_8k_agent:material_events:5_07",
+        "agent_name": "run_8k_agent",
+        "title": "Item 5.07 - Submission of Matters to a Vote of Security Holders",
+        "claim": "At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a \"China Entanglement Audit.\"",
+        "summary": "At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a \"China Entanglement Audit.\"",
+        "importance": "medium",
+        "time_horizon": "recent",
+        "trigger_to_monitor": "material_events",
+        "confidence": "medium",
+        "verification_label": "partially_supported",
+        "filing_types": [
+          "8-K"
+        ],
+        "evidence_refs": [
+          {
+            "evidence_id": "run_8k_agent:0001140361-26-006577:0001140361-26-006577:section:1:chunk:5",
+            "document_id": "0001140361-26-006577",
+            "filing_type": "8-K",
+            "excerpt": "A management proposal to ratify the appointment of Ernst & Young LLP as Apple’s independent registered public accounting firm for fiscal year 2026 was approved.",
+            "section_id": "0001140361-26-006577:section:1",
+            "chunk_id": "0001140361-26-006577:0001140361-26-006577:section:1:chunk:5",
+            "page_number": null,
+            "char_start": 9369,
+            "char_end": 10492,
+            "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000114036126006577/ef20060722_8k.htm"
+          }
+        ]
+      }
+    ],
+    "final_investment_thesis": {
+      "thesis": "Verified disclosures show At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a \"China Entanglement Audit.\". Additional filing support shows that Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services. Further filings indicate that Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.",
+      "stance": "valuation_free_disclosure_thesis",
+      "uncertainty_statement": "The conclusion remains uncertainty-aware because some signals are only partially supported or coverage is incomplete.",
+      "evidence_refs": [
+        {
+          "evidence_id": "run_8k_agent:0001140361-26-006577:0001140361-26-006577:section:1:chunk:5",
+          "document_id": "0001140361-26-006577",
+          "filing_type": "8-K",
+          "excerpt": "A management proposal to ratify the appointment of Ernst & Young LLP as Apple’s independent registered public accounting firm for fiscal year 2026 was approved.",
+          "section_id": "0001140361-26-006577:section:1",
+          "chunk_id": "0001140361-26-006577:0001140361-26-006577:section:1:chunk:5",
+          "page_number": null,
+          "char_start": 9369,
+          "char_end": 10492,
+          "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000114036126006577/ef20060722_8k.htm"
+        }
+      ],
+      "verification_label": "supported",
+      "confidence": "medium"
+    },
+    "evidence_grounded_report": {
+      "business_overview": [
+        {
+          "finding_id": "analysis:e44c4cd3e80447e9a9efbf05a8943144:run_10k_agent:long_term_structure",
+          "agent_name": "run_10k_agent",
+          "title": "10-K Long-Term Structure",
+          "claim": "Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.",
+          "summary": "Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.",
+          "importance": "medium",
+          "time_horizon": "long_term",
+          "trigger_to_monitor": "long_term_structure",
+          "confidence": "medium",
+          "verification_label": "supported",
+          "filing_types": [
+            "10-K"
+          ],
+          "evidence_refs": [
+            {
+              "evidence_id": "run_10k_agent:0000320193-25-000079:0000320193-25-000079:section:1:chunk:1",
+              "document_id": "0000320193-25-000079",
+              "filing_type": "10-K",
+              "excerpt": "The Company designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.",
+              "section_id": "0000320193-25-000079:section:1",
+              "chunk_id": "0000320193-25-000079:0000320193-25-000079:section:1:chunk:1",
+              "page_number": null,
+              "char_start": 23435,
+              "char_end": 23690,
+              "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm"
+            }
+          ]
+        }
+      ],
+      "recent_quarter_change": [
+        {
+          "finding_id": "analysis:e44c4cd3e80447e9a9efbf05a8943144:run_10q_agent:recent_quarter_change",
+          "agent_name": "run_10q_agent",
+          "title": "10-Q Recent Quarter Change",
+          "claim": "Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.",
+          "summary": "Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.",
+          "importance": "medium",
+          "time_horizon": "recent",
+          "trigger_to_monitor": "recent_quarter_change",
+          "confidence": "medium",
+          "verification_label": "supported",
+          "filing_types": [
+            "10-Q"
+          ],
+          "evidence_refs": [
+            {
+              "evidence_id": "run_10q_agent:0000320193-26-000006:0000320193-26-000006:section:4:chunk:4",
+              "document_id": "0000320193-26-000006",
+              "filing_type": "10-Q",
+              "excerpt": "Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.",
+              "section_id": "0000320193-26-000006:section:4",
+              "chunk_id": "0000320193-26-000006:0000320193-26-000006:section:4:chunk:4",
+              "page_number": null,
+              "char_start": 45343,
+              "char_end": 46526,
+              "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000006/aapl-20251227.htm"
+            }
+          ]
+        }
+      ],
+      "material_events": [
+        {
+          "finding_id": "analysis:e44c4cd3e80447e9a9efbf05a8943144:run_8k_agent:material_events:5_07",
+          "agent_name": "run_8k_agent",
+          "title": "Item 5.07 - Submission of Matters to a Vote of Security Holders",
+          "claim": "At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a \"China Entanglement Audit.\"",
+          "summary": "At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a \"China Entanglement Audit.\"",
+          "importance": "medium",
+          "time_horizon": "recent",
+          "trigger_to_monitor": "material_events",
+          "confidence": "medium",
+          "verification_label": "partially_supported",
+          "filing_types": [
+            "8-K"
+          ],
+          "evidence_refs": [
+            {
+              "evidence_id": "run_8k_agent:0001140361-26-006577:0001140361-26-006577:section:1:chunk:5",
+              "document_id": "0001140361-26-006577",
+              "filing_type": "8-K",
+              "excerpt": "A management proposal to ratify the appointment of Ernst & Young LLP as Apple’s independent registered public accounting firm for fiscal year 2026 was approved.",
+              "section_id": "0001140361-26-006577:section:1",
+              "chunk_id": "0001140361-26-006577:0001140361-26-006577:section:1:chunk:5",
+              "page_number": null,
+              "char_start": 9369,
+              "char_end": 10492,
+              "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000114036126006577/ef20060722_8k.htm"
+            }
+          ]
+        }
+      ],
+      "cross_document_tensions": []
+    },
+    "verification_summary": {
+      "total_claims": 4,
+      "supported_claim_count": 3,
+      "partially_supported_claim_count": 1,
+      "insufficient_claim_count": 0,
+      "conflicting_claim_count": 0,
+      "unavailable_claim_count": 0,
+      "high_confidence_claim_count": 0,
+      "medium_confidence_claim_count": 4,
+      "low_confidence_claim_count": 0
+    },
+    "appendix": {
+      "conflicts": [],
+      "coverage_gaps": [],
+      "excluded_claims": [],
+      "source_documents": [
+        {
+          "document_id": "0001140361-26-006577",
+          "filing_type": "8-K",
+          "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000114036126006577/ef20060722_8k.htm"
+        },
+        {
+          "document_id": "0000320193-26-000006",
+          "filing_type": "10-Q",
+          "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000032019326000006/aapl-20251227.htm"
+        },
+        {
+          "document_id": "0000320193-25-000079",
+          "filing_type": "10-K",
+          "source_uri": "https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm"
+        }
+      ]
+    }
+  },
+  "final_report_markdown": "# Evidence-Grounded Report\n\n- Report ID: `report:analysis:e44c4cd3e80447e9a9efbf05a8943144`\n- Company: `AAPL` (Apple Inc.)\n- Generated At: `2026-03-15T15:11:14.509585+00:00`\n- Allowed Sources: 10-K, 10-Q, 8-K\n- Presentation Note: Some Key Risks, Key Opportunities, or Watchpoints entries are renderer-level fill heuristics for readability and are not canonical report objects.\n\n## Executive Summary\nEurope net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services. Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services. At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory.\n\n## Data Coverage and Confidence Summary\nCoverage label: complete\nCovered channels: 10-K, 10-Q, 8-K\nIncluded claims: 4. Excluded claims: 0.\n\n## Key Risks\n- No verified risk finding\n  - Note: Presentation fill\n  - Claim: The current filing-only pass did not surface a disclosure-grounded risk claim that met the inclusion threshold.\n\n## Key Opportunities\n- 10-Q Recent Quarter Change\n  - Claim: Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.\n  - Verification: supported / confidence=medium\n  - Trigger To Monitor: recent_quarter_change\n  - Evidence `run_10q_agent:0000320193-26-000006:0000320193-26-000006:section:4:chunk:4`\n    - Excerpt: Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.\n- 10-K Long-Term Structure\n  - Claim: Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.\n  - Verification: supported / confidence=medium\n  - Trigger To Monitor: long_term_structure\n  - Evidence `run_10k_agent:0000320193-25-000079:0000320193-25-000079:section:1:chunk:1`\n    - Excerpt: The Company designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.\n\n## Watchpoints\n- Item 5.07 - Submission of Matters to a Vote of Security Holders\n  - Claim: At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a \"China Entanglement Audit.\"\n  - Verification: partially_supported / confidence=medium\n  - Trigger To Monitor: material_events\n  - Evidence `run_8k_agent:0001140361-26-006577:0001140361-26-006577:section:1:chunk:5`\n    - Excerpt: A management proposal to ratify the appointment of Ernst & Young LLP as Apple’s independent registered public accounting firm for fiscal year 2026 was approved.\n\n## Final Investment Thesis\nVerified disclosures show At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a \"China Entanglement Audit.\". Additional filing support shows that Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services. Further filings indicate that Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.\nThe conclusion remains uncertainty-aware because some signals are only partially supported or coverage is incomplete.\n\n## Evidence-Grounded Report\n\n### Business Overview\n- 10-K Long-Term Structure\n  - Claim: Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.\n  - Verification: supported / confidence=medium\n  - Trigger To Monitor: long_term_structure\n  - Evidence `run_10k_agent:0000320193-25-000079:0000320193-25-000079:section:1:chunk:1`\n    - Excerpt: The Company designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.\n\n### Recent Quarter Change\n- 10-Q Recent Quarter Change\n  - Claim: Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.\n  - Verification: supported / confidence=medium\n  - Trigger To Monitor: recent_quarter_change\n  - Evidence `run_10q_agent:0000320193-26-000006:0000320193-26-000006:section:4:chunk:4`\n    - Excerpt: Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.\n\n### Material Events\n- Item 5.07 - Submission of Matters to a Vote of Security Holders\n  - Claim: At Apple's 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst & Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a \"China Entanglement Audit.\"\n  - Verification: partially_supported / confidence=medium\n  - Trigger To Monitor: material_events\n  - Evidence `run_8k_agent:0001140361-26-006577:0001140361-26-006577:section:1:chunk:5`\n    - Excerpt: A management proposal to ratify the appointment of Ernst & Young LLP as Apple’s independent registered public accounting firm for fiscal year 2026 was approved.\n\n### Cross-Document Tensions\n- None\n\n## Verification Summary\n- Total claims: 4\n- Supported: 3\n- Partially supported: 1\n- Insufficient: 0\n- Conflicting: 0\n- Unavailable: 0\n- High confidence: 0\n- Medium confidence: 4\n- Low confidence: 0\n\n## Appendix\n\n### Coverage Gaps\n- None\n\n### Excluded Claims\n- None\n\n### Source Documents\n- `0001140361-26-006577` (8-K)\n  - Source: https://www.sec.gov/Archives/edgar/data/320193/000114036126006577/ef20060722_8k.htm\n- `0000320193-26-000006` (10-Q)\n  - Source: https://www.sec.gov/Archives/edgar/data/320193/000032019326000006/aapl-20251227.htm\n- `0000320193-25-000079` (10-K)\n  - Source: https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm",
+  "error_message": null,
+  "started_at": "2026-03-15T15:10:30.865203",
+  "completed_at": "2026-03-15T15:11:14.513665",
+  "created_at": "2026-03-15T15:10:30.764105",
+  "updated_at": "2026-03-15T15:11:14.514034"
+}

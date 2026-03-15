@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>report:analysis:e44c4cd3e80447e9a9efbf05a8943144</title>
+  <style>
+    :root {
+      --paper: #f6f1e7;
+      --paper-strong: #fffdf8;
+      --ink: #1d2a24;
+      --muted: #617067;
+      --border: #d8d0c2;
+      --accent: #214a3a;
+      --accent-soft: #dce9e0;
+      --gold: #9f7a2a;
+      --risk: #8b3a2b;
+      --opportunity: #1f6a48;
+      --warning: #8a5a18;
+      --shadow: 0 10px 30px rgba(29, 42, 36, 0.08);
+      --radius: 20px;
+      --radius-sm: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(33, 74, 58, 0.08), transparent 28rem),
+        linear-gradient(180deg, #efe8da 0%, var(--paper) 24rem);
+      color: var(--ink);
+      font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+      line-height: 1.65;
+    }
+    .page {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 32px auto 56px;
+    }
+    .hero {
+      background: linear-gradient(145deg, rgba(255, 253, 248, 0.98), rgba(245, 240, 231, 0.96));
+      border: 1px solid rgba(216, 208, 194, 0.9);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -120px -120px auto;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(33, 74, 58, 0.09), transparent 68%);
+      pointer-events: none;
+    }
+    .eyebrow {
+      font-size: 0.8rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      font-weight: 700;
+    }
+    h1, h2, h3, h4 {
+      margin: 0;
+      color: #17211c;
+      line-height: 1.2;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      max-width: 14ch;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 60ch;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+    .meta-panel, .summary-panel {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(216, 208, 194, 0.7);
+      border-radius: 18px;
+      padding: 18px 20px;
+      backdrop-filter: blur(10px);
+    }
+    .summary-panel p {
+      margin: 0;
+      font-size: 1.02rem;
+    }
+    .meta-row {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 16px;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(216, 208, 194, 0.65);
+      align-items: start;
+    }
+    .meta-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .meta-label {
+      font: 700 0.78rem/1.2 "Helvetica Neue", Arial, sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .meta-value {
+      min-width: 0;
+    }
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip, .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      font: 700 0.75rem/1 "Helvetica Neue", Arial, sans-serif;
+      letter-spacing: 0.02em;
+      padding: 7px 10px;
+    }
+    .chip {
+      background: #f2ece0;
+      color: #304038;
+      border: 1px solid rgba(216, 208, 194, 0.9);
+    }
+    .badge {
+      border: 1px solid transparent;
+      text-transform: capitalize;
+    }
+    .badge.supported { background: #dcefe5; color: #184d34; border-color: #bdd8c8; }
+    .badge.partially-supported { background: #f4ead4; color: #7a5613; border-color: #e2cc9c; }
+    .badge.insufficient, .badge.low { background: #f8e0dc; color: #7e2e25; border-color: #e8b8b1; }
+    .badge.conflicting { background: #f3d6d0; color: #74251c; border-color: #dca59b; }
+    .badge.unavailable { background: #ece7dd; color: #5e665f; border-color: #d7cebe; }
+    .badge.high { background: #d8ece4; color: #154b37; border-color: #bdd8cc; }
+    .badge.medium { background: #efe3c6; color: #7e5c16; border-color: #e0cb96; }
+    .badge.presentation-fill {
+      background: rgba(139, 90, 24, 0.12);
+      color: #7a5311;
+      border-color: rgba(138, 90, 24, 0.35);
+    }
+    .badge.monitoring-heuristic {
+      background: rgba(33, 74, 58, 0.12);
+      color: #214a3a;
+      border-color: rgba(33, 74, 58, 0.28);
+    }
+    .badge.heuristic-badge {
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+    }
+    .notice-banner {
+      margin-top: 18px;
+      background: linear-gradient(90deg, rgba(159, 122, 42, 0.12), rgba(159, 122, 42, 0.04));
+      color: #6b541b;
+      border: 1px solid rgba(159, 122, 42, 0.22);
+      border-radius: 16px;
+      padding: 14px 16px;
+      font-size: 0.95rem;
+    }
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
+      margin-top: 24px;
+    }
+    .section-card {
+      grid-column: span 12;
+      background: rgba(255, 253, 248, 0.94);
+      border: 1px solid rgba(216, 208, 194, 0.88);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .section-card.compact { padding: 20px; }
+    .section-card.half { grid-column: span 6; }
+    .section-card.third { grid-column: span 4; }
+    .section-kicker {
+      font: 700 0.77rem/1 "Helvetica Neue", Arial, sans-serif;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .section-card > h2 {
+      font-size: 1.6rem;
+      margin-bottom: 14px;
+    }
+    .section-card > p,
+    .claim-copy,
+    .muted-note {
+      margin: 0;
+      font-size: 1rem;
+    }
+    .muted-note {
+      color: var(--muted);
+      margin-top: 10px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .stat-card {
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid rgba(216, 208, 194, 0.8);
+      border-radius: 16px;
+      padding: 14px;
+    }
+    .stat-label {
+      font: 700 0.75rem/1.1 "Helvetica Neue", Arial, sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+    .claim-stack {
+      display: grid;
+      gap: 14px;
+    }
+    .claim-card {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(216, 208, 194, 0.82);
+      border-radius: 18px;
+      padding: 18px;
+    }
+    .claim-card.fill-card {
+      background: linear-gradient(180deg, rgba(245, 239, 228, 0.96), rgba(255, 251, 243, 0.98));
+      border-style: dashed;
+      border-color: rgba(159, 122, 42, 0.38);
+    }
+    .claim-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .card-eyebrow {
+      font: 700 0.7rem/1 "Helvetica Neue", Arial, sans-serif;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--warning);
+      margin-bottom: 8px;
+    }
+    .claim-title {
+      font-size: 1.08rem;
+      font-weight: 700;
+      margin: 0;
+    }
+    .claim-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .claim-copy { margin-bottom: 10px; }
+    .supporting-copy {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
+    .evidence-list {
+      list-style: none;
+      padding: 0;
+      margin: 14px 0 0;
+      display: grid;
+      gap: 10px;
+    }
+    .evidence-item {
+      background: #f7f2e7;
+      border-radius: 14px;
+      padding: 12px 14px;
+      border: 1px solid rgba(216, 208, 194, 0.7);
+    }
+    .evidence-id {
+      font: 700 0.72rem/1 "SFMono-Regular", Menlo, monospace;
+      color: var(--muted);
+      display: inline-block;
+      margin-bottom: 8px;
+    }
+    .source-list {
+      display: grid;
+      gap: 12px;
+    }
+    .source-card {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(216, 208, 194, 0.82);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+    .source-card a {
+      color: var(--accent);
+      text-decoration: none;
+      word-break: break-word;
+    }
+    .source-card a:hover { text-decoration: underline; }
+    .empty-state {
+      padding: 16px 18px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px dashed rgba(216, 208, 194, 0.92);
+      color: var(--muted);
+    }
+    @media (max-width: 920px) {
+      .hero-grid, .stats-grid { grid-template-columns: 1fr; }
+      .section-card.half, .section-card.third { grid-column: span 12; }
+      .meta-row { grid-template-columns: 1fr; gap: 6px; }
+      .claim-header { flex-direction: column; }
+      .claim-meta { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="eyebrow">Evidence-Grounded Equity Research</div>
+      <h1>Apple Inc.</h1>
+      <p class="subtitle">
+        Valuation-free synthesis built from verified 10-K, 10-Q, and 8-K disclosures.
+      </p>
+      <div class="hero-grid">
+        <section class="meta-panel">
+          <div class="meta-row">
+            <span class="meta-label">Ticker</span>
+            <span class="meta-value">AAPL</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Report ID</span>
+            <span class="meta-value"><code>report:analysis:e44c4cd3e80447e9a9efbf05a8943144</code></span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Generated</span>
+            <span class="meta-value">2026-03-15T15:11:14.509585+00:00</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Sources</span>
+            <span class="meta-value"><div class="chip-row"><span class="chip">10-K</span><span class="chip">10-Q</span><span class="chip">8-K</span></div></span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Coverage</span>
+            <span class="meta-value"><span class="badge complete">complete</span></span>
+          </div>
+          
+        </section>
+        <section class="summary-panel">
+          <div class="section-kicker">Executive Summary</div>
+          <p>Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services. Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services. At Apple&#x27;s 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst &amp; Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory.</p>
+        </section>
+      </div>
+      
+        <div class="notice-banner">
+          Some Key Risks, Key Opportunities, or Watchpoints entries are renderer-level
+          fill heuristics for readability and are not canonical report objects.
+        </div>
+        
+    </header>
+
+    <main class="section-grid">
+      <section class="section-card half">
+        <div class="section-kicker">Scope</div>
+        <h2>Data Coverage and Confidence Summary</h2>
+        <div class="meta-row">
+          <span class="meta-label">Covered Channels</span>
+          <span class="meta-value"><div class="chip-row"><span class="chip">10-K</span><span class="chip">10-Q</span><span class="chip">8-K</span></div></span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Missing Topics</span>
+          <span class="meta-value">None</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Notes</span>
+          <span class="meta-value">Included claims: 4. Excluded claims: 0.</span>
+        </div>
+      </section>
+
+      <section class="section-card half">
+        <div class="section-kicker">Verification</div>
+        <h2>Claim Verification Summary</h2>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Total Claims</div><div class="stat-value">4</div></div>
+          <div class="stat-card"><div class="stat-label">Supported</div><div class="stat-value">3</div></div>
+          <div class="stat-card"><div class="stat-label">Partial</div><div class="stat-value">1</div></div>
+          <div class="stat-card"><div class="stat-label">High Confidence</div><div class="stat-value">0</div></div>
+          <div class="stat-card"><div class="stat-label">Medium Confidence</div><div class="stat-value">4</div></div>
+        </div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-kicker">Thesis</div>
+        <h2>Final Investment Thesis</h2>
+        <p>Verified disclosures show At Apple&#x27;s 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst &amp; Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a &quot;China Entanglement Audit.&quot;. Additional filing support shows that Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services. Further filings indicate that Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.</p>
+        <p class="muted-note">The conclusion remains uncertainty-aware because some signals are only partially supported or coverage is incomplete.</p>
+      </section>
+
+      <section class="section-card third">
+        <div class="section-kicker">Risk View</div>
+        <h2>Key Risks</h2>
+        <div class="claim-stack"><article class="claim-card fill-card"><div class="claim-header"><div><div class="card-eyebrow">Renderer-level fill</div><h3 class="claim-title">No verified risk finding</h3></div><div class="claim-meta"><span class="badge presentation-fill heuristic-badge">Presentation fill</span></div></div><p class="claim-copy">The current filing-only pass did not surface a disclosure-grounded risk claim that met the inclusion threshold.</p></article></div>
+      </section>
+
+      <section class="section-card third">
+        <div class="section-kicker">Upside View</div>
+        <h2>Key Opportunities</h2>
+        <div class="claim-stack"><article class="claim-card"><div class="claim-header"><h3 class="claim-title">10-Q Recent Quarter Change</h3><div class="claim-meta"><span class="badge supported">supported</span><span class="badge medium">medium</span></div></div><p class="claim-copy">Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.</p><p class="supporting-copy"><strong>Trigger to monitor:</strong> recent_quarter_change</p><ul class="evidence-list"><li class="evidence-item"><span class="evidence-id">run_10q_agent:0000320193-26-000006:0000320193-26-000006:section:4:chunk:4</span><div>Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.</div></li></ul></article><article class="claim-card"><div class="claim-header"><h3 class="claim-title">10-K Long-Term Structure</h3><div class="claim-meta"><span class="badge supported">supported</span><span class="badge medium">medium</span></div></div><p class="claim-copy">Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.</p><p class="supporting-copy"><strong>Trigger to monitor:</strong> long_term_structure</p><ul class="evidence-list"><li class="evidence-item"><span class="evidence-id">run_10k_agent:0000320193-25-000079:0000320193-25-000079:section:1:chunk:1</span><div>The Company designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.</div></li></ul></article></div>
+      </section>
+
+      <section class="section-card third">
+        <div class="section-kicker">Monitoring</div>
+        <h2>Watchpoints</h2>
+        <div class="claim-stack"><article class="claim-card"><div class="claim-header"><div><h3 class="claim-title">Item 5.07 - Submission of Matters to a Vote of Security Holders</h3></div><div class="claim-meta"><span class="badge verification=partially-supported-/-confidence=medium">verification=partially_supported / confidence=medium</span></div></div><p class="claim-copy">At Apple&#x27;s 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst &amp; Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a &quot;China Entanglement Audit.&quot;</p><p class="supporting-copy"><strong>Based on:</strong> material_events</p></article></div>
+      </section>
+
+      <section class="section-card half">
+        <div class="section-kicker">Core Evidence</div>
+        <h2>Business Overview</h2>
+        <div class="claim-stack"><article class="claim-card"><div class="claim-header"><h3 class="claim-title">10-K Long-Term Structure</h3><div class="claim-meta"><span class="badge supported">supported</span><span class="badge medium">medium</span></div></div><p class="claim-copy">Apple designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.</p><p class="supporting-copy"><strong>Trigger to monitor:</strong> long_term_structure</p><ul class="evidence-list"><li class="evidence-item"><span class="evidence-id">run_10k_agent:0000320193-25-000079:0000320193-25-000079:section:1:chunk:1</span><div>The Company designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services.</div></li></ul></article></div>
+      </section>
+
+      <section class="section-card half">
+        <div class="section-kicker">Quarterly Read</div>
+        <h2>Recent Quarter Change</h2>
+        <div class="claim-stack"><article class="claim-card"><div class="claim-header"><h3 class="claim-title">10-Q Recent Quarter Change</h3><div class="claim-meta"><span class="badge supported">supported</span><span class="badge medium">medium</span></div></div><p class="claim-copy">Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.</p><p class="supporting-copy"><strong>Trigger to monitor:</strong> recent_quarter_change</p><ul class="evidence-list"><li class="evidence-item"><span class="evidence-id">run_10q_agent:0000320193-26-000006:0000320193-26-000006:section:4:chunk:4</span><div>Europe net sales increased during the first quarter of 2026 compared to the same quarter in 2025 primarily due to higher net sales of iPhone and Services.</div></li></ul></article></div>
+      </section>
+
+      <section class="section-card">
+        <div class="section-kicker">Events</div>
+        <h2>Material Events</h2>
+        <div class="claim-stack"><article class="claim-card"><div class="claim-header"><h3 class="claim-title">Item 5.07 - Submission of Matters to a Vote of Security Holders</h3><div class="claim-meta"><span class="badge partially-supported">partially_supported</span><span class="badge medium">medium</span></div></div><p class="claim-copy">At Apple&#x27;s 2026 Annual Meeting of Shareholders, all nominated directors were elected, Ernst &amp; Young LLP was ratified as the independent accounting firm for fiscal year 2026, and an advisory resolution to approve executive compensation was approved. Shareholders also approved the Non-Employee Director Stock Plan, as Amended and Restated, but did not approve a shareholder proposal for a &quot;China Entanglement Audit.&quot;</p><p class="supporting-copy"><strong>Trigger to monitor:</strong> material_events</p><ul class="evidence-list"><li class="evidence-item"><span class="evidence-id">run_8k_agent:0001140361-26-006577:0001140361-26-006577:section:1:chunk:5</span><div>A management proposal to ratify the appointment of Ernst &amp; Young LLP as Apple’s independent registered public accounting firm for fiscal year 2026 was approved.</div></li></ul></article></div>
+      </section>
+
+      <section class="section-card half compact">
+        <div class="section-kicker">Appendix</div>
+        <h2>Coverage Gaps</h2>
+        <div class="empty-state">None</div>
+      </section>
+
+      <section class="section-card half compact">
+        <div class="section-kicker">Appendix</div>
+        <h2>Excluded Claims</h2>
+        <div class="empty-state">None</div>
+      </section>
+
+      <section class="section-card compact">
+        <div class="section-kicker">Appendix</div>
+        <h2>Source Documents</h2>
+        <div class="source-list"><article class="source-card"><div class="claim-title">0001140361-26-006577</div><div class="supporting-copy">8-K</div><div class="supporting-copy"><a href="https://www.sec.gov/Archives/edgar/data/320193/000114036126006577/ef20060722_8k.htm" target="_blank" rel="noreferrer noopener">https://www.sec.gov/Archives/edgar/data/320193/000114036126006577/ef20060722_8k.htm</a></div></article><article class="source-card"><div class="claim-title">0000320193-26-000006</div><div class="supporting-copy">10-Q</div><div class="supporting-copy"><a href="https://www.sec.gov/Archives/edgar/data/320193/000032019326000006/aapl-20251227.htm" target="_blank" rel="noreferrer noopener">https://www.sec.gov/Archives/edgar/data/320193/000032019326000006/aapl-20251227.htm</a></div></article><article class="source-card"><div class="claim-title">0000320193-25-000079</div><div class="supporting-copy">10-K</div><div class="supporting-copy"><a href="https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm" target="_blank" rel="noreferrer noopener">https://www.sec.gov/Archives/edgar/data/320193/000032019325000079/aapl-20250927.htm</a></div></article></div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

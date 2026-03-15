@@ -1,0 +1,43 @@
+{
+  "thread_id": "analysis:433f5a085f8b4ab7b8f8acecbe2d49d2",
+  "node_name": "final_reporter",
+  "timestamp": "20260315T132153831827Z",
+  "state_summary": {
+    "request_id": "analysis:433f5a085f8b4ab7b8f8acecbe2d49d2",
+    "ticker": "AMZN",
+    "completed_steps": [
+      "task_planner",
+      "document_router",
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "run_call_agent",
+      "conflict_checker",
+      "evidence_verifier",
+      "manual_review_gate",
+      "synthetic_agent"
+    ],
+    "route_plan": [
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "synthetic_agent"
+    ],
+    "shared_memory_count": 17,
+    "agent_packet_count": 10,
+    "verification_result_count": 3,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "complete"
+  },
+  "update_summary": {
+    "keys": [
+      "completed_steps",
+      "coverage_status",
+      "final_report",
+      "updated_at"
+    ],
+    "completed_steps_count": 1
+  },
+  "manual_review_requests": []
+}

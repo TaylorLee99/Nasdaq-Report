@@ -3,6 +3,7 @@
 from app.reporting.service import (
     build_report,
     build_verified_report,
+    render_report_html,
     render_report_markdown,
     serialize_report_json,
 )
@@ -10,6 +11,7 @@ from app.reporting.service import (
 __all__ = [
     "build_report",
     "build_verified_report",
+    "render_report_html",
     "render_report_markdown",
     "serialize_report_json",
 ]

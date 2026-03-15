@@ -120,6 +120,16 @@ class HeuristicEvidenceVerifier:
                 sufficiency_score = min(sufficiency_score + 0.08, 1.0)
                 supported_threshold = 0.5
                 partial_threshold = 0.24
+            if _is_item_801_debt_offering_event(request):
+                alignment_score = min(alignment_score + 0.12, 1.0)
+                sufficiency_score = min(sufficiency_score + 0.08, 1.0)
+                supported_threshold = 0.5
+                partial_threshold = 0.24
+        if _is_structured_numeric_ten_q_request(request):
+            numeric_bonus = _structured_numeric_ten_q_bonus(request)
+            alignment_score = min(alignment_score + numeric_bonus, 1.0)
+            sufficiency_score = min(sufficiency_score + numeric_bonus * 0.8, 1.0)
+            partial_threshold = min(partial_threshold, 0.22)
 
         evidence_available = bool(request.cited_evidence_refs or request.retrieved_snippets)
 
@@ -466,6 +476,28 @@ def _is_item_502_compensation_event(request: ClaimVerificationRequest) -> bool:
     return any(marker in lowered for marker in markers)
 
 
+def _is_item_801_debt_offering_event(request: ClaimVerificationRequest) -> bool:
+    item_numbers = _detected_item_numbers(request)
+    if "8.01" not in item_numbers:
+        return False
+    lowered = " ".join(
+        [
+            request.claim,
+            *[ref.excerpt for ref in request.cited_evidence_refs],
+            *[chunk.text for chunk in request.retrieved_snippets],
+        ]
+    ).lower()
+    markers = (
+        "closed the sale",
+        "completed the sale",
+        "floating rate notes",
+        "fixed-rate notes",
+        "series of notes",
+        "underwriting agreement",
+    )
+    return any(marker in lowered for marker in markers)
+
+
 def _supported_confidence_label(
     *,
     request: ClaimVerificationRequest,
@@ -520,3 +552,59 @@ def _is_numeric_financial_claim(request: ClaimVerificationRequest) -> bool:
     lowered = request.claim.lower()
     markers = ("revenue", "income", "cash", "margin", "eps", "$")
     return any(marker in lowered for marker in markers)
+
+
+def _is_structured_numeric_ten_q_request(request: ClaimVerificationRequest) -> bool:
+    if request.agent_name != "run_10q_agent":
+        return False
+    if not _is_numeric_financial_claim(request):
+        return False
+    lowered = request.claim.lower()
+    return any(
+        marker in lowered
+        for marker in (
+            "revenue",
+            "net sales",
+            "gross margin",
+            "operating income",
+            "cash",
+            "marketable securities",
+            "customers",
+        )
+    ) and bool(_numeric_tokens(request.claim))
+
+
+def _structured_numeric_ten_q_bonus(request: ClaimVerificationRequest) -> float:
+    claim_numbers = _numeric_tokens(request.claim)
+    if not claim_numbers:
+        return 0.0
+    evidence_overlap = max(
+        (
+            _numeric_overlap_ratio(claim_numbers, _numeric_tokens(text))
+            for text in (
+                [ref.excerpt for ref in request.cited_evidence_refs]
+                + [chunk.text for chunk in request.retrieved_snippets]
+            )
+        ),
+        default=0.0,
+    )
+    if evidence_overlap >= 1.0:
+        return 0.22
+    if evidence_overlap >= 0.5:
+        return 0.14
+    return 0.0
+
+
+def _numeric_tokens(text: str) -> set[str]:
+    return {
+        token.strip()
+        for token in re.findall(r"\$?\d[\d,]*(?:\.\d+)?%?", text)
+        if token.strip()
+    }
+
+
+def _numeric_overlap_ratio(left: set[str], right: set[str]) -> float:
+    if not left or not right:
+        return 0.0
+    overlap = left & right
+    return len(overlap) / len(left)

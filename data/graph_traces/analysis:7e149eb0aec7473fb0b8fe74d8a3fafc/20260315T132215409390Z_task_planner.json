@@ -1,0 +1,30 @@
+{
+  "thread_id": "analysis:7e149eb0aec7473fb0b8fe74d8a3fafc",
+  "node_name": "task_planner",
+  "timestamp": "20260315T132215409390Z",
+  "state_summary": {
+    "request_id": "analysis:7e149eb0aec7473fb0b8fe74d8a3fafc",
+    "ticker": "PLTR",
+    "completed_steps": [],
+    "route_plan": [],
+    "shared_memory_count": 0,
+    "agent_packet_count": 0,
+    "verification_result_count": 0,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "not_started"
+  },
+  "update_summary": {
+    "keys": [
+      "agent_packets",
+      "completed_steps",
+      "coverage_status",
+      "execution_plan",
+      "shared_memory",
+      "updated_at"
+    ],
+    "completed_steps_count": 1,
+    "agent_packets_count": 1
+  },
+  "manual_review_requests": []
+}

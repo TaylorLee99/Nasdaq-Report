@@ -184,6 +184,10 @@ def build_structured_thesis_report(
     else:
         missing_topics = [topic for topic in missing_topics if topic != "evidence_gap"]
     missing_topics = _reconcile_missing_topics(findings=findings, missing_topics=missing_topics)
+    missing_topics = _augment_missing_topics_for_body_coverage(
+        findings=findings,
+        missing_topics=missing_topics,
+    )
     report_conflicts = list(conflicts or [])
     coverage_summary = _build_coverage_summary(
         packets=packets,
@@ -520,7 +524,9 @@ def _build_coverage_summary(
         notes_parts.append(f"Missing topics: {', '.join(missing_topics)}")
     return DataCoverageSummary(
         coverage_label=(
-            CoverageLabel.COMPLETE if findings and not missing_topics else CoverageLabel.PARTIAL
+            CoverageLabel.COMPLETE
+            if findings and not missing_topics and not missing_channels
+            else CoverageLabel.PARTIAL
         ),
         covered_channels=covered_channels,
         missing_channels=missing_channels,
@@ -544,28 +550,36 @@ def _reconcile_missing_topics(
     return [topic for topic in missing_topics if topic not in covered_topics]
 
 
+def _augment_missing_topics_for_body_coverage(
+    *,
+    findings: Sequence[AgentFinding],
+    missing_topics: Sequence[str],
+) -> list[str]:
+    effective_topics = list(dict.fromkeys(topic for topic in missing_topics if topic))
+    covered_channels = _derive_covered_channels([], findings)
+    channel_topics = {
+        FilingType.FORM_10K: "long_term_structure",
+        FilingType.FORM_10Q: "recent_quarter_change",
+        FilingType.FORM_8K: "material_events",
+    }
+    for filing_type, topic in channel_topics.items():
+        if filing_type not in covered_channels and topic not in effective_topics:
+            effective_topics.append(topic)
+    return effective_topics
+
+
 def _derive_covered_channels(
     packets: Sequence[AgentOutputPacket],
     findings: Sequence[AgentFinding],
 ) -> list[FilingType]:
-    covered = {
-        filing_type
-        for finding in findings
-        for filing_type in finding.filing_types
-        if filing_type in ALLOWED_REPORT_SOURCES
-    }
-    packet_map = {
-        "run_10k_agent": FilingType.FORM_10K,
-        "run_10q_agent": FilingType.FORM_10Q,
-        "run_8k_agent": FilingType.FORM_8K,
-    }
-    for packet in packets:
-        filing_type = packet_map.get(packet.agent_name)
-        if filing_type is None:
-            continue
-        if packet.coverage_status.label != CoverageLabel.NOT_STARTED:
-            covered.add(filing_type)
-    return [filing_type for filing_type in ALLOWED_REPORT_SOURCES if filing_type in covered]
+    covered: list[FilingType] = []
+    if any(FilingType.FORM_10K in finding.filing_types for finding in findings):
+        covered.append(FilingType.FORM_10K)
+    if any(FilingType.FORM_10Q in finding.filing_types for finding in findings):
+        covered.append(FilingType.FORM_10Q)
+    if _material_event_findings(findings):
+        covered.append(FilingType.FORM_8K)
+    return covered
 
 
 def _select_executive_findings(findings: Sequence[AgentFinding]) -> list[AgentFinding]:
@@ -808,6 +822,7 @@ def _material_event_findings(findings: Sequence[AgentFinding]) -> list[AgentFind
     non_exhibit_events = [finding for finding in selected if not _is_exhibit_only_finding(finding)]
     if non_exhibit_events:
         selected = non_exhibit_events
+    selected = [finding for finding in selected if not _is_weak_exhibit_only_finding(finding)]
     return sorted(
         selected,
         key=lambda finding: (
@@ -921,8 +936,19 @@ def _summary_sentence_from_finding(finding: AgentFinding) -> str:
         finding=finding,
         company=finding.company,
     )
+    report_claim = _report_claim_text(finding).rstrip(".")
+    if report_claim and (
+        sentence.strip().lower().startswith("item ")
+        or
+        _is_generic_filing_support_sentence(sentence)
+        or _looks_fragmentary_sentence(sentence)
+        or _summary_quality_score(sentence) + 10 < _summary_quality_score(report_claim)
+    ):
+        sentence = report_claim
+        if finding.agent_name == "run_8k_agent":
+            sentence = _first_sentence(sentence)
     if len(sentence) > 200:
-        sentence = sentence[:197].rstrip() + "..."
+        sentence = _truncate_report_sentence(sentence, max_length=200)
     return _polish_report_sentence(sentence, company=finding.company)
 
 
@@ -936,6 +962,18 @@ def _report_claim_text(finding: AgentFinding) -> str:
         candidate = finding.summary
     elif item_number == "5.02":
         candidate = finding.claim or finding.summary
+    elif (
+        item_number is not None
+        and item_number != "9.01"
+        and finding.summary
+        and finding.claim
+        and (
+            finding.summary.strip().lower().startswith("item ")
+            or "disclosed that" in finding.summary.lower()
+            or _looks_fragmentary_sentence(finding.summary)
+        )
+    ):
+        candidate = finding.claim
     elif item_number is not None and finding.summary:
         candidate = finding.summary
     else:
@@ -955,6 +993,24 @@ def _report_summary_text(finding: AgentFinding) -> str:
         return ""
     item_number = _extract_item_number(finding)
     if item_number == "5.02" and not _looks_like_item_502_claim_text(finding.summary):
+        normalized = _sanitize_summary_sentence(finding.claim)
+        normalized = _rewrite_8k_report_sentence(normalized)
+        normalized = _to_analyst_style_clause(
+            normalized.rstrip("."),
+            finding=finding,
+            company=finding.company,
+        )
+        return _polish_report_sentence(normalized, company=finding.company)
+    if (
+        item_number is not None
+        and item_number != "9.01"
+        and finding.claim
+        and (
+            finding.summary.strip().lower().startswith("item ")
+            or "disclosed that" in finding.summary.lower()
+            or _looks_fragmentary_sentence(finding.summary)
+        )
+    ):
         normalized = _sanitize_summary_sentence(finding.claim)
         normalized = _rewrite_8k_report_sentence(normalized)
         normalized = _to_analyst_style_clause(
@@ -1040,6 +1096,8 @@ def _summary_quality_score(sentence: str) -> int:
         score -= 50
     if normalized.count(",") > 5:
         score -= 10
+    if _looks_fragmentary_sentence(normalized):
+        score -= 60
     return score
 
 
@@ -1149,20 +1207,40 @@ def _first_sentence(text: str) -> str:
     for abbreviation in SENTENCE_ABBREVIATIONS:
         protected = protected.replace(abbreviation, abbreviation.replace(".", "<prd>"))
     parts = protected.split(". ")
-    sentence = parts[0].strip()
-    sentence = sentence.replace("<prd>", ".")
-    if sentence and not sentence.endswith("."):
-        sentence += "."
-    return sentence
+    fallback_sentence = ""
+    for part in parts:
+        sentence = part.strip().replace("<prd>", ".")
+        if not sentence:
+            continue
+        if sentence and not sentence.endswith("."):
+            sentence += "."
+        if not fallback_sentence:
+            fallback_sentence = sentence
+        if not _looks_fragmentary_sentence(sentence):
+            return sentence
+    return fallback_sentence
 
 
 def _sanitize_summary_sentence(text: str) -> str:
-    return (
+    normalized = (
         text.replace("U.S.", "US")
         .replace("U.K.", "UK")
         .replace("e.g.", "for example")
         .replace("i.e.", "that is")
     )
+    normalized = re.sub(
+        r"^Highlights from .*?included:\s*[•\-]\s*",
+        "",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"^([A-Z][A-Za-z&.'-]+)\s+\1\b",
+        r"\1",
+        normalized,
+    )
+    normalized = re.sub(r"\b([A-Z][a-z]+)\s+\1\b", r"\1", normalized)
+    return normalized
 
 
 def _rewrite_8k_report_sentence(text: str) -> str:
@@ -1186,11 +1264,15 @@ def _rewrite_8k_report_sentence(text: str) -> str:
 
 
 def _finding_clause(finding: AgentFinding, *, company: Company | None = None) -> str:
-    summary_sentence = _summary_sentence_from_finding(finding)
-    if _is_generic_filing_support_sentence(summary_sentence):
+    summary_sentence = _report_claim_text(finding)
+    if _is_generic_filing_support_sentence(summary_sentence) or _summary_quality_score(
+        summary_sentence
+    ) < 20:
         evidence_sentence = _evidence_backed_sentence_from_finding(finding)
         if evidence_sentence is not None:
             summary_sentence = evidence_sentence
+        else:
+            summary_sentence = _fallback_summary_sentence(finding)
     clause = summary_sentence.rstrip(".")
     clause = re.sub(
         r"^Item\s+\d+\.\d{2}\s*\([^)]*\)\s*disclosed(?::| that)\s*",
@@ -1207,10 +1289,19 @@ def _finding_clause(finding: AgentFinding, *, company: Company | None = None) ->
 
 def _build_thesis_sentence(prefix: str, clause: str) -> str:
     normalized_clause = clause.strip().rstrip(".")
+    if re.match(r"^[A-Z][a-z]+ing\b", normalized_clause):
+        normalized_clause = normalized_clause[0].lower() + normalized_clause[1:]
+        return f"{prefix} that {normalized_clause}."
     if re.match(r"^(On|As of|The|We|Our)\b", normalized_clause):
         normalized_clause = normalized_clause[0].lower() + normalized_clause[1:]
         return f"{prefix} that {normalized_clause}."
-    if re.match(r"^NVIDIA\b", normalized_clause):
+    if re.match(
+        r"^[A-Z][A-Za-z0-9&.'’\-\s]{0,90}\b"
+        r"(?:announced|adopted|completed|designs|disclosed|grew|had|has|holds|"
+        r"increased|includes|is|issued|makes|manufactures|markets|offers|posted|"
+        r"provides|reports|serve|serves)\b",
+        normalized_clause,
+    ):
         return f"{prefix} that {normalized_clause}."
     return f"{prefix} {normalized_clause}."
 
@@ -1229,9 +1320,22 @@ def _to_analyst_style_clause(
 
     company_name = _company_display_name(company)
     rewritten = re.sub(
+        r"^The Company\b",
+        company_name,
+        normalized,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(
+        r"^Making our suite of cloud-based services platform-agnostic,\s*(.+)$",
+        rf"{company_name} makes its suite of cloud-based services platform-agnostic, \1",
+        rewritten,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(
         r"^(As of [A-Za-z]+ \d{1,2}, \d{4}),\s+we had\b",
         rf"\1, {company_name} had",
-        normalized,
+        rewritten,
         flags=re.IGNORECASE,
     )
     rewritten = re.sub(
@@ -1252,6 +1356,19 @@ def _to_analyst_style_clause(
         f"{company_name}'s",
         rewritten,
         count=1,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(r"\bour\b", "its", rewritten, flags=re.IGNORECASE)
+    rewritten = re.sub(
+        rf"^{re.escape(company_name)}\s+serve\b",
+        f"{company_name} serves",
+        rewritten,
+        flags=re.IGNORECASE,
+    )
+    rewritten = re.sub(
+        rf"^{re.escape(company_name)}\s+have\b",
+        f"{company_name} has",
+        rewritten,
         flags=re.IGNORECASE,
     )
     return rewritten
@@ -1292,6 +1409,25 @@ def _is_exhibit_only_finding(finding: AgentFinding) -> bool:
         return True
     lowered = f"{finding.claim} {finding.summary}".lower()
     return "exhibit filed:" in lowered
+
+
+def _is_weak_exhibit_only_finding(finding: AgentFinding) -> bool:
+    item_number = _extract_item_number(finding)
+    combined_text = " ".join(part for part in (finding.claim, finding.summary) if part)
+    lowered = combined_text.lower()
+    if item_number != "9.01" and "exhibit filed:" not in lowered:
+        return False
+    if "exhibits and supporting filing materials were disclosed" in lowered:
+        return True
+    match = re.search(r'Exhibit filed:\s*"([^"]+)"', combined_text, flags=re.IGNORECASE)
+    if match is None:
+        return False
+    description = match.group(1).strip().strip(".").lower()
+    if description in {"underwriting", "agreement", "indenture", "plan"}:
+        return True
+    if re.search(r",\s*(as|amended|restated)$", description):
+        return True
+    return False
 
 
 def _material_event_item_priority(finding: AgentFinding) -> int:
@@ -1338,6 +1474,12 @@ def _polish_report_sentence(text: str, *, company: Company | None = None) -> str
     if not normalized:
         return normalized
     normalized = _rewrite_10k_business_report_sentence(normalized, company=company)
+    normalized = re.sub(
+        r"via a press release attached as Exhibit 99\.1(?: to an 8-K filing)?",
+        "via an 8-K press release",
+        normalized,
+        flags=re.IGNORECASE,
+    )
     normalized = re.sub(r",\s*\.", ".", normalized)
     normalized = re.sub(
         r"^the provided snippets\b",
@@ -1350,6 +1492,11 @@ def _polish_report_sentence(text: str, *, company: Company | None = None) -> str
         r"The \1 8-K",
         normalized,
         flags=re.IGNORECASE,
+    )
+    normalized = re.sub(
+        r"\b([A-Z][a-z]+)\s+\1\b",
+        r"\1",
+        normalized,
     )
     normalized = _normalize_company_and_date_text(normalized, company=company)
     if not normalized.endswith(".") and not re.search(r'\."\s*$', normalized):
@@ -1372,6 +1519,16 @@ def _rewrite_10k_business_report_sentence(text: str, *, company: Company | None 
         return (
             f"{company_name}'s technology stack includes CUDA, GPUs, and "
             "domain-specific software libraries and frameworks"
+        )
+    if "makes its suite of cloud-based services platform-agnostic" in lowered:
+        return (
+            f"{company_name} makes its cloud-based services available across a wide range "
+            "of devices and ecosystems, including competitor platforms"
+        )
+    if "making our suite of cloud-based services platform-agnostic" in lowered:
+        return (
+            f"{company_name} makes its cloud-based services available across a wide range "
+            "of devices and ecosystems, including competitor platforms"
         )
     return normalized
 
@@ -1414,6 +1571,12 @@ def _normalize_company_mentions(text: str, company: Company) -> str:
     normalized = text
     if company.company_name:
         normalized = re.sub(
+            rf"{re.escape(company.company_name)}\s*\([^)]*\)",
+            company.company_name,
+            normalized,
+            flags=re.IGNORECASE,
+        )
+        normalized = re.sub(
             re.escape(company.company_name),
             company.company_name,
             normalized,
@@ -1437,6 +1600,56 @@ def _normalize_company_mentions(text: str, company: Company) -> str:
     return normalized
 
 
+def _looks_fragmentary_sentence(text: str) -> bool:
+    normalized = " ".join(text.split()).strip()
+    if not normalized:
+        return True
+    lowered = normalized.lower()
+    if any(
+        lowered.endswith(fragment)
+        for fragment in (
+            "quarter en.",
+            "revenue from.",
+            "customers duri.",
+            "press release is.",
+            "elected directors, ra.",
+        )
+    ):
+        return True
+    if re.search(r"\b(is|are|was|were|from|en|ra|duri)\.$", lowered):
+        return True
+    if re.search(r"\b(increased|decreased|declined|grew|offset|reflects)\.$", lowered):
+        return True
+    if re.search(r"\b(and|or|but)\.$", lowered):
+        return True
+    if " quarter en." in lowered or " revenue from." in lowered:
+        return True
+    return False
+
+
+def _truncate_report_sentence(text: str, *, max_length: int) -> str:
+    normalized = " ".join(text.split()).strip()
+    if len(normalized) <= max_length:
+        return normalized
+    truncated = normalized[: max_length - 3].rstrip()
+    truncated = re.sub(r"\s+\S*$", "", truncated).rstrip(",;:- ")
+    trailing_stopword = re.compile(
+        r"\b("
+        r"a|an|the|and|or|but|to|of|for|in|on|at|by|"
+        r"increased|decreased|declined|grew|reflects|reflecting|"
+        r"partially|primarily|including|inclusive|offset|offsetting"
+        r")$"
+    )
+    while truncated and trailing_stopword.search(truncated.lower()):
+        updated = re.sub(r"\s+\S+$", "", truncated).rstrip(",;:- ")
+        if not updated or updated == truncated:
+            break
+        truncated = updated
+    if not truncated:
+        truncated = normalized[: max_length - 3].rstrip()
+    return f"{truncated}..."
+
+
 def _select_evidence_refs(finding: AgentFinding, *, max_refs: int = 2) -> list[EvidenceRef]:
     report_claim = _report_claim_text(finding)
     ranked = sorted(
@@ -1457,11 +1670,44 @@ def _select_evidence_refs(finding: AgentFinding, *, max_refs: int = 2) -> list[E
             continue
         if ref.document_id in seen_documents and len(selected) >= 1:
             continue
-        selected.append(ref)
+        selected.append(_clean_report_evidence_ref(ref, company=finding.company))
         seen_documents.add(ref.document_id)
         if len(selected) >= max_refs:
             break
-    return selected or ranked[:1]
+    if selected:
+        return selected
+    return [_clean_report_evidence_ref(ref, company=finding.company) for ref in ranked[:1]]
+
+
+def _clean_report_evidence_ref(
+    ref: EvidenceRef,
+    *,
+    company: Company | None = None,
+) -> EvidenceRef:
+    cleaned_excerpt = _clean_report_evidence_excerpt(ref.excerpt, company=company)
+    if cleaned_excerpt == ref.excerpt:
+        return ref
+    return ref.model_copy(update={"excerpt": cleaned_excerpt})
+
+
+def _clean_report_evidence_excerpt(
+    text: str,
+    *,
+    company: Company | None = None,
+) -> str:
+    normalized = _sanitize_summary_sentence(" ".join(text.split()).strip())
+    if not normalized:
+        return normalized
+    normalized = _normalize_company_and_date_text(normalized, company=company)
+    best_sentence = _first_sentence(normalized)
+    if best_sentence and not _looks_fragmentary_sentence(best_sentence):
+        normalized = best_sentence
+    normalized = re.sub(r"\b([A-Z][a-z]+)\s+\1\b", r"\1", normalized)
+    normalized = re.sub(r"\b([A-Z]{2,})\s+\1\b", r"\1", normalized)
+    normalized = re.sub(r"\s+,", ",", normalized)
+    normalized = re.sub(r"\s+\.", ".", normalized)
+    normalized = re.sub(r"\s*\([^)]{81,}\)", "", normalized)
+    return _truncate_report_sentence(normalized, max_length=200)
 
 
 def _evidence_ref_quality(ref: EvidenceRef) -> int:

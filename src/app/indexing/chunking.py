@@ -194,5 +194,11 @@ def _looks_like_accounting_pronouncement_fragment(text: str) -> bool:
         "adoption of new and recently issued accounting pronouncements",
         "recently issued accounting pronouncements",
         "new accounting pronouncements",
+        "recent accounting pronouncements",
+        "summary of significant accounting policies",
+        "critical accounting estimates",
+        "critical accounting policies",
+        "forward-looking statements",
+        "private securities litigation reform act",
     )
     return any(marker in lowered for marker in markers)

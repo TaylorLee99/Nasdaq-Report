@@ -511,3 +511,34 @@ def test_section_chunker_skips_accounting_pronouncement_fragment_for_10q() -> No
     spans = chunker.chunk_section(section)
 
     assert spans == []
+
+
+def test_section_chunker_skips_significant_accounting_policy_fragment_for_10q() -> None:
+    company = UniverseSnapshotConstituent(
+        snapshot_date=date(2024, 12, 31),
+        ticker="AAPL",
+        cik="0000320193",
+        company_name="Apple Inc.",
+        exchange="NASDAQ",
+        is_domestic_filer=True,
+    ).to_company()
+    section = ParsedSection(
+        section_id="doc-6:section:1",
+        document_id="doc-6",
+        company=company,
+        filing_type=FilingType.FORM_10Q,
+        heading="Liquidity and Capital Resources",
+        text=(
+            "Note 1, Summary of Significant Accounting Policies, describes the significant "
+            "accounting policies and methods used in the preparation of the Company’s "
+            "condensed consolidated financial statements."
+        ),
+        ordinal=1,
+        section_type=DocumentSectionType.LIQUIDITY,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+
+    chunker = SectionChunker(ChunkingConfig(chunk_size_chars=220, chunk_overlap_chars=20))
+    spans = chunker.chunk_section(section)
+
+    assert spans == []

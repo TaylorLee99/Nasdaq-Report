@@ -220,6 +220,54 @@ def test_verifier_marks_unavailable_when_coverage_is_missing() -> None:
     assert result.reretrieval_recommended is False
 
 
+def test_verifier_allows_partial_support_for_item_801_debt_offering_event() -> None:
+    verifier = HeuristicEvidenceVerifier()
+    request = ClaimVerificationRequest(
+        claim_id="claim-8k-debt-offering",
+        agent_name="run_8k_agent",
+        claim=(
+            "On March 13, 2026, Amazon.com, Inc. completed the sale of multiple "
+            "series of notes, including both fixed and floating rate notes with "
+            "various maturities up to 2076."
+        ),
+        cited_evidence_refs=[
+            make_8k_evidence(
+                "ev-8k-debt-offering",
+                (
+                    "On March 13, 2026, Amazon.com, Inc. closed the sale of "
+                    "$1,750,000,000 aggregate principal amount of its floating "
+                    "rate notes due 2028 and multiple other series of notes."
+                ),
+            )
+        ],
+        retrieved_snippets=[
+            ChunkRecord(
+                chunk_id="chunk-8k-debt-offering",
+                document_id="doc-8k-debt-offering",
+                section_id="sec-8k-debt-offering",
+                company=COMPANY,
+                filing_type=FilingType.FORM_8K,
+                section_name="Item 8.01 Other Events",
+                text=(
+                    "On March 13, 2026, Amazon.com, Inc. closed the sale of "
+                    "$1,750,000,000 aggregate principal amount of its floating "
+                    "rate notes due 2028 and multiple other series of notes."
+                ),
+                token_count=28,
+                parse_confidence=ConfidenceLabel.HIGH,
+                item_number="8.01",
+            )
+        ],
+    )
+
+    result = verifier.verify_claim(request)
+
+    assert result.label in {
+        VerificationLabel.PARTIALLY_SUPPORTED,
+        VerificationLabel.SUPPORTED,
+    }
+
+
 def test_verifier_uses_retrieved_snippets_before_marking_claim_unavailable() -> None:
     verifier = HeuristicEvidenceVerifier()
     request = ClaimVerificationRequest(
@@ -421,6 +469,41 @@ def test_verifier_prefers_excerpt_grounded_claim_over_generic_fallback_claim() -
 
     assert grounded_result.alignment_score > generic_result.alignment_score
     assert grounded_result.sufficiency_score >= generic_result.sufficiency_score
+
+
+def test_verifier_gives_partial_credit_to_exact_match_ten_q_numeric_claim() -> None:
+    verifier = HeuristicEvidenceVerifier()
+    request = ClaimVerificationRequest(
+        claim_id="claim-msft-table-row",
+        agent_name="run_10q_agent",
+        claim="Operating income increased 22% compared with the prior-year period.",
+        cited_evidence_refs=[
+            make_evidence(
+                "ev-msft-table-row",
+                "Operating income increased 22% compared with the prior-year period.",
+            )
+        ],
+        retrieved_snippets=[
+            ChunkRecord(
+                chunk_id="chunk-msft-table-row",
+                document_id="doc-msft-table-row",
+                section_id="sec-msft-table-row",
+                company=COMPANY,
+                filing_type=FilingType.FORM_10Q,
+                section_name="ITEM 2. MANAGEMENT’S DISCUSSION AND ANALYSIS OF — OVERVIEW",
+                text="Operating income $ 20,599 $ 16,885 22%",
+                token_count=9,
+                parse_confidence=ConfidenceLabel.HIGH,
+            )
+        ],
+    )
+
+    result = verifier.verify_claim(request)
+
+    assert result.label in {
+        VerificationLabel.SUPPORTED,
+        VerificationLabel.PARTIALLY_SUPPORTED,
+    }
 
 
 def test_apply_verification_results_updates_finding_statuses() -> None:

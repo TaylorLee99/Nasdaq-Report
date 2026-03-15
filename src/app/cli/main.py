@@ -544,3 +544,7 @@ def index_inspect_8k(
         ],
     }
     typer.echo(json.dumps(payload, indent=2, default=str))
+
+
+if __name__ == "__main__":
+    app()

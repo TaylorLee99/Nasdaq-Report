@@ -136,7 +136,12 @@ def test_specialized_agent_subgraphs_execute_with_profile_specific_filters(
         company=request.company,
         filing_type=filing_type,
         section_name=profile.section_names[0] if profile.section_names else "Item 1.01",
-        text="Evidence chunk for specialized agent execution.",
+        text=(
+            "As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, and "
+            "marketable securities."
+            if filing_type == FilingType.FORM_10Q
+            else "Evidence chunk for specialized agent execution."
+        ),
         token_count=6,
         parse_confidence=ConfidenceLabel.HIGH,
         transcript_segment_type=(
@@ -239,7 +244,7 @@ def test_ten_q_planner_uses_latest_quarter_query_template() -> None:
 
     query = retriever.requests[0]["query"]
     assert "latest quarter" in query
-    assert "revenue margin liquidity controls" in query
+    assert "revenue margin liquidity operating income customer growth controls" in query
     assert "10-Q" in query
 
 
@@ -268,8 +273,8 @@ def test_ten_q_agent_prefers_deterministic_excerpt_claim_over_fragmentary_summar
         section_name="Liquidity and Capital Resources",
         text=(
             "Evaluate our liquidity and capital resources to ensure we can finance future "
-            "capital requirements. As of October 26, 2025, liquidity and capital resources "
-            "remained strong with substantial cash."
+            "capital requirements. As of October 26, 2025, we had $60.6 billion in cash, "
+            "cash equivalents, and marketable securities."
         ),
         token_count=26,
         parse_confidence=ConfidenceLabel.HIGH,
@@ -346,6 +351,301 @@ def test_ten_q_agent_ignores_numeric_residue_fragments() -> None:
     assert packet.findings[0].claim != "25."
 
 
+def test_ten_q_agent_omits_recent_quarter_finding_when_only_non_delta_chunks_exist() -> None:
+    request = AnalysisRequest(
+        request_id="req-10q-no-delta-finding",
+        company=Company(cik="0000320193", ticker="AAPL", company_name="Apple Inc."),
+        question="What changed recently?",
+        max_reretrievals=2,
+    )
+    task = RoutedTask(
+        task_type=AnalysisTaskType.RECENT_QUARTER_CHANGE,
+        agent_name=TEN_Q_PROFILE.agent_name,
+        filing_type=FilingType.FORM_10Q,
+        status=TaskRoutingStatus.ROUTED,
+        reason="routed for non-delta exclusion test",
+        document_available=True,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+    chunks = [
+        ChunkRecord(
+            chunk_id="tenq-no-delta:chunk-products",
+            document_id="doc-10q-no-delta",
+            section_id="section-10q-no-delta-products",
+            company=request.company,
+            filing_type=FilingType.FORM_10Q,
+            section_name=(
+                "Management's Discussion and Analysis — Business Seasonality and Product "
+                "Introductions"
+            ),
+            text=(
+                "During the first quarter of 2026, the Company announced the following "
+                "updated products: 14-inch MacBook Pro and iPad Pro."
+            ),
+            token_count=18,
+            parse_confidence=ConfidenceLabel.HIGH,
+        ),
+        ChunkRecord(
+            chunk_id="tenq-no-delta:chunk-legal",
+            document_id="doc-10q-no-delta",
+            section_id="section-10q-no-delta-legal",
+            company=request.company,
+            filing_type=FilingType.FORM_10Q,
+            section_name="Management's Discussion and Analysis — Legal Proceedings",
+            text=(
+                "The outcomes of legal proceedings and claims are subject to significant "
+                "uncertainty."
+            ),
+            token_count=12,
+            parse_confidence=ConfidenceLabel.HIGH,
+        ),
+    ]
+
+    packet = execute_specialized_agent(
+        profile=TEN_Q_PROFILE,
+        request=request,
+        tasks=[task],
+        retriever=RecordingRetriever(chunks),
+        model=StubSpecializedAgentModel(),
+    )
+
+    assert packet.findings == []
+    assert "missing_recent_quarter_delta" in packet.unresolved_items
+
+
+def test_ten_q_agent_builds_claim_from_overview_table_row() -> None:
+    request = AnalysisRequest(
+        request_id="req-10q-table-row",
+        company=Company(cik="0000789019", ticker="MSFT", company_name="Microsoft Corporation"),
+        question="What changed recently?",
+        max_reretrievals=2,
+    )
+    task = RoutedTask(
+        task_type=AnalysisTaskType.RECENT_QUARTER_CHANGE,
+        agent_name=TEN_Q_PROFILE.agent_name,
+        filing_type=FilingType.FORM_10Q,
+        status=TaskRoutingStatus.ROUTED,
+        reason="routed for overview table-row test",
+        document_available=True,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+    chunk = ChunkRecord(
+        chunk_id="tenq-table-row:chunk-1",
+        document_id="doc-10q-table-row",
+        section_id="section-10q-table-row",
+        company=request.company,
+        filing_type=FilingType.FORM_10Q,
+        section_name="ITEM 2. MANAGEMENT’S DISCUSSION AND ANALYSIS OF — OVERVIEW",
+        text="Productivity and Business Processes Revenue $ 34,116 $ 29,437 16%",
+        token_count=12,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+
+    packet = execute_specialized_agent(
+        profile=TEN_Q_PROFILE,
+        request=request,
+        tasks=[task],
+        retriever=RecordingRetriever([chunk]),
+        model=StubSpecializedAgentModel(),
+    )
+
+    assert packet.findings[0].claim == (
+        "Productivity and Business Processes revenue increased 16% compared with the "
+        "prior-year period."
+    )
+
+
+def test_ten_q_agent_accepts_strong_delta_sentence_from_macro_subsection() -> None:
+    request = AnalysisRequest(
+        request_id="req-10q-macro-delta",
+        company=Company(cik="0000320193", ticker="AAPL", company_name="Apple Inc."),
+        question="What changed recently?",
+        max_reretrievals=2,
+    )
+    task = RoutedTask(
+        task_type=AnalysisTaskType.RECENT_QUARTER_CHANGE,
+        agent_name=TEN_Q_PROFILE.agent_name,
+        filing_type=FilingType.FORM_10Q,
+        status=TaskRoutingStatus.ROUTED,
+        reason="routed for macro subsection delta test",
+        document_available=True,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+    chunk = ChunkRecord(
+        chunk_id="tenq-macro-delta:chunk-1",
+        document_id="doc-10q-macro-delta",
+        section_id="section-10q-macro-delta",
+        company=request.company,
+        filing_type=FilingType.FORM_10Q,
+        section_name=(
+            "Item 2. Management’s Discussion and Analysis of Financial Condition and "
+            "Results of Operations — Macroeconomic Conditions"
+        ),
+        text=(
+            "Europe Europe net sales increased during the first quarter of 2026 compared "
+            "to the same quarter in 2025 primarily due to higher net sales of iPhone "
+            "and Services."
+        ),
+        token_count=24,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+
+    packet = execute_specialized_agent(
+        profile=TEN_Q_PROFILE,
+        request=request,
+        tasks=[task],
+        retriever=RecordingRetriever([chunk]),
+        model=StubSpecializedAgentModel(),
+    )
+
+    assert packet.findings[0].claim.startswith(
+        "Europe net sales increased during the first quarter of 2026"
+    )
+
+
+def test_ten_q_agent_rejects_business_seasonality_sentence_as_recent_quarter_change() -> None:
+    request = AnalysisRequest(
+        request_id="req-10q-seasonality-reject",
+        company=Company(cik="0000320193", ticker="AAPL", company_name="Apple Inc."),
+        question="What changed recently?",
+        max_reretrievals=2,
+    )
+    task = RoutedTask(
+        task_type=AnalysisTaskType.RECENT_QUARTER_CHANGE,
+        agent_name=TEN_Q_PROFILE.agent_name,
+        filing_type=FilingType.FORM_10Q,
+        status=TaskRoutingStatus.ROUTED,
+        reason="routed for seasonality rejection test",
+        document_available=True,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+    chunk = ChunkRecord(
+        chunk_id="tenq-seasonality:chunk-1",
+        document_id="doc-10q-seasonality",
+        section_id="section-10q-seasonality",
+        company=request.company,
+        filing_type=FilingType.FORM_10Q,
+        section_name=(
+            "Item 2. Management’s Discussion and Analysis of Financial Condition and "
+            "Results of Operations — Business Seasonality and Product Introductions"
+        ),
+        text=(
+            "The Company has historically experienced higher net sales in its first quarter "
+            "compared to other quarters in its fiscal year due in part to seasonal holiday demand."
+        ),
+        token_count=24,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+
+    packet = execute_specialized_agent(
+        profile=TEN_Q_PROFILE,
+        request=request,
+        tasks=[task],
+        retriever=RecordingRetriever([chunk]),
+        model=StubSpecializedAgentModel(),
+    )
+
+    assert packet.findings == []
+    assert "missing_recent_quarter_delta" in packet.unresolved_items
+
+
+def test_8k_debt_offering_claim_prefers_opening_sale_sentence_for_evidence() -> None:
+    company = Company(cik="0001018724", ticker="AMZN", company_name="Amazon.com Inc.")
+    chunk_opening = ChunkRecord(
+        chunk_id="8k-debt-offering:chunk-1",
+        document_id="doc-8k-debt-offering",
+        section_id="section-8k-debt-offering",
+        company=company,
+        filing_type=FilingType.FORM_8K,
+        section_name="Item 8.01 Other Events",
+        text=(
+            "On March 13, 2026, Amazon.com, Inc. closed the sale of $1,750,000,000 "
+            "aggregate principal amount of its floating rate notes due 2028 and "
+            "multiple other series of notes."
+        ),
+        token_count=30,
+        parse_confidence=ConfidenceLabel.HIGH,
+        item_number="8.01",
+    )
+    chunk_underwriting = ChunkRecord(
+        chunk_id="8k-debt-offering:chunk-2",
+        document_id="doc-8k-debt-offering",
+        section_id="section-8k-debt-offering",
+        company=company,
+        filing_type=FilingType.FORM_8K,
+        section_name="Item 8.01 Other Events",
+        text=(
+            "000,000 aggregate principal amount of its 5.950% notes due 2066 and "
+            "$3,000,000,000 aggregate principal amount of its 6.050% notes due 2076 "
+            "pursuant to an Underwriting Agreement dated March 10, 2026."
+        ),
+        token_count=35,
+        parse_confidence=ConfidenceLabel.HIGH,
+        item_number="8.01",
+    )
+
+    refs = _select_chunk_evidence_refs(
+        chunks=[chunk_underwriting, chunk_opening],
+        claim=(
+            "On March 13, 2026, Amazon.com, Inc. completed the sale of multiple "
+            "series of notes, including both fixed and floating rate notes with "
+            "various maturities up to 2076."
+        ),
+        agent_name=EIGHT_K_PROFILE.agent_name,
+    )
+
+    assert refs[0].chunk_id == chunk_opening.chunk_id
+    assert "closed the sale" in refs[0].excerpt.lower()
+
+
+def test_ten_q_agent_accepts_customer_growth_sentence_from_overview() -> None:
+    request = AnalysisRequest(
+        request_id="req-10q-customer-growth",
+        company=Company(cik="0001321655", ticker="PLTR", company_name="Palantir Technologies Inc."),
+        question="What changed recently?",
+        max_reretrievals=2,
+    )
+    task = RoutedTask(
+        task_type=AnalysisTaskType.RECENT_QUARTER_CHANGE,
+        agent_name=TEN_Q_PROFILE.agent_name,
+        filing_type=FilingType.FORM_10Q,
+        status=TaskRoutingStatus.ROUTED,
+        reason="routed for customer growth test",
+        document_available=True,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+    chunk = ChunkRecord(
+        chunk_id="tenq-customer-growth:chunk-1",
+        document_id="doc-10q-customer-growth",
+        section_id="section-10q-customer-growth",
+        company=request.company,
+        filing_type=FilingType.FORM_10Q,
+        section_name=(
+            "ITEM 2. MANAGEMENT’S DISCUSSION AND ANALYSIS OF FINANCIAL CONDITION "
+            "AND RESULTS OF OPERATIONS — Overview"
+        ),
+        text=(
+            "Our average revenue for the top twenty customers during the trailing twelve "
+            "months ended September 30, 2025 was $83.0 million, which grew 38% from an "
+            "average of $60.1 million in revenue from the top twenty customers during "
+            "the trailing twelve months ended September 30, 2024."
+        ),
+        token_count=42,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+
+    packet = execute_specialized_agent(
+        profile=TEN_Q_PROFILE,
+        request=request,
+        tasks=[task],
+        retriever=RecordingRetriever([chunk]),
+        model=StubSpecializedAgentModel(),
+    )
+
+    assert "top twenty customers" in packet.findings[0].claim.lower()
+    assert "38%" in packet.findings[0].claim
+
+
 def test_ten_k_agent_prefers_business_structure_sentence_over_regional_anecdote() -> None:
     request = AnalysisRequest(
         request_id="req-10k-deterministic",
@@ -389,6 +689,64 @@ def test_ten_k_agent_prefers_business_structure_sentence_over_regional_anecdote(
     )
 
     assert "accelerated computing platforms" in packet.findings[0].claim
+
+
+def test_ten_k_agent_prefers_business_description_over_market_risk_fragment() -> None:
+    request = AnalysisRequest(
+        request_id="req-10k-market-risk-generalization",
+        company=Company(cik="0000789019", ticker="MSFT", company_name="Microsoft Corp."),
+        question="Describe the long-term structure.",
+        max_reretrievals=2,
+    )
+    task = RoutedTask(
+        task_type=AnalysisTaskType.LONG_TERM_STRUCTURE,
+        agent_name=TEN_K_PROFILE.agent_name,
+        filing_type=FilingType.FORM_10K,
+        status=TaskRoutingStatus.ROUTED,
+        reason="routed for generalized 10-K structure test",
+        document_available=True,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+    chunks = [
+        ChunkRecord(
+            chunk_id="tenk-generalized:chunk-market-risk",
+            document_id="doc-10k-generalized",
+            section_id="section-10k-market-risk",
+            company=request.company,
+            filing_type=FilingType.FORM_10K,
+            section_name="Item 7A. Quantitative and Qualitative Disclosures about Market Risk",
+            text=(
+                "Equity 10% decrease in equity market prices would reduce earnings and other "
+                "income in the current fiscal year."
+            ),
+            token_count=17,
+            parse_confidence=ConfidenceLabel.HIGH,
+        ),
+        ChunkRecord(
+            chunk_id="tenk-generalized:chunk-business",
+            document_id="doc-10k-generalized",
+            section_id="section-10k-business",
+            company=request.company,
+            filing_type=FilingType.FORM_10K,
+            section_name="Item 1. Business",
+            text=(
+                "Microsoft provides cloud-based and productivity software services to "
+                "commercial and consumer customers across a broad portfolio."
+            ),
+            token_count=16,
+            parse_confidence=ConfidenceLabel.HIGH,
+        ),
+    ]
+
+    packet = execute_specialized_agent(
+        profile=TEN_K_PROFILE,
+        request=request,
+        tasks=[task],
+        retriever=RecordingRetriever(chunks),
+        model=StubSpecializedAgentModel(),
+    )
+
+    assert "cloud-based and productivity software services" in packet.findings[0].claim
 
 
 def test_ten_k_agent_strips_heading_like_business_prefixes_from_claims() -> None:
@@ -748,6 +1106,68 @@ def test_ten_q_agent_uses_sentence_aligned_evidence_excerpt() -> None:
 
     assert packet.findings[0].claim.startswith("As of October 26, 2025")
     assert packet.findings[0].evidence_refs[0].excerpt.startswith("As of October 26, 2025")
+
+
+def test_ten_q_agent_prefers_recent_quarter_sentence_over_accounting_policy_sentence() -> None:
+    request = AnalysisRequest(
+        request_id="req-10q-accounting-generalization",
+        company=Company(cik="0001321655", ticker="PLTR", company_name="Palantir Technologies Inc."),
+        question="What changed recently?",
+        max_reretrievals=2,
+    )
+    task = RoutedTask(
+        task_type=AnalysisTaskType.RECENT_QUARTER_CHANGE,
+        agent_name=TEN_Q_PROFILE.agent_name,
+        filing_type=FilingType.FORM_10Q,
+        status=TaskRoutingStatus.ROUTED,
+        reason="routed for generalized 10-Q recent-quarter test",
+        document_available=True,
+        parse_confidence=ConfidenceLabel.HIGH,
+    )
+    chunks = [
+        ChunkRecord(
+            chunk_id="tenq-generalized:chunk-accounting",
+            document_id="doc-10q-generalized",
+            section_id="section-10q-accounting",
+            company=request.company,
+            filing_type=FilingType.FORM_10Q,
+            section_name="Critical Accounting Policies and Estimates",
+            text=(
+                "Critical Accounting Policies and Estimates Our condensed consolidated "
+                "financial statements and the accompanying notes thereto are prepared in "
+                "accordance with GAAP."
+            ),
+            token_count=22,
+            parse_confidence=ConfidenceLabel.HIGH,
+        ),
+        ChunkRecord(
+            chunk_id="tenq-generalized:chunk-quarterly-change",
+            document_id="doc-10q-generalized",
+            section_id="section-10q-quarterly-change",
+            company=request.company,
+            filing_type=FilingType.FORM_10Q,
+            section_name=(
+                "Management's Discussion and Analysis of Financial Condition "
+                "and Results of Operations"
+            ),
+            text=(
+                "Revenue increased in the quarter as commercial customer count and software "
+                "deployment activity expanded."
+            ),
+            token_count=16,
+            parse_confidence=ConfidenceLabel.HIGH,
+        ),
+    ]
+
+    packet = execute_specialized_agent(
+        profile=TEN_Q_PROFILE,
+        request=request,
+        tasks=[task],
+        retriever=RecordingRetriever(chunks),
+        model=StubSpecializedAgentModel(),
+    )
+
+    assert "Revenue increased in the quarter" in packet.findings[0].claim
 
 
 def test_ten_k_evidence_refs_prefer_business_chunk_for_data_center_claim() -> None:
