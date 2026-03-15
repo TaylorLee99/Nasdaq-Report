@@ -1,0 +1,30 @@
+{
+  "thread_id": "analysis:be1107b9d66f4480a21a648198e0bf4a",
+  "node_name": "task_planner",
+  "timestamp": "20260314T201446699894Z",
+  "state_summary": {
+    "request_id": "analysis:be1107b9d66f4480a21a648198e0bf4a",
+    "ticker": "NVDA",
+    "completed_steps": [],
+    "route_plan": [],
+    "shared_memory_count": 0,
+    "agent_packet_count": 0,
+    "verification_result_count": 0,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "not_started"
+  },
+  "update_summary": {
+    "keys": [
+      "agent_packets",
+      "completed_steps",
+      "coverage_status",
+      "execution_plan",
+      "shared_memory",
+      "updated_at"
+    ],
+    "completed_steps_count": 1,
+    "agent_packets_count": 1
+  },
+  "manual_review_requests": []
+}

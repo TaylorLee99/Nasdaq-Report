@@ -1,0 +1,36 @@
+{
+  "accession_number": "0001045810-24-000101",
+  "filing_date": "2024-11-20",
+  "fiscal_period": "Q3FY2025",
+  "facts": [
+    {
+      "concept": "Revenues",
+      "value": "35100",
+      "unit": "USDm",
+      "period_start": "2024-07-29",
+      "period_end": "2024-10-27",
+      "frame": "CY2024Q3",
+      "context_ref": "ctx-revenue",
+      "decimals": -6
+    },
+    {
+      "concept": "NetIncomeLoss",
+      "value": "19300",
+      "unit": "USDm",
+      "period_start": "2024-07-29",
+      "period_end": "2024-10-27",
+      "frame": "CY2024Q3",
+      "context_ref": "ctx-net-income",
+      "decimals": -6
+    },
+    {
+      "concept": "Assets",
+      "value": "80000",
+      "unit": "USDm",
+      "period_end": "2024-10-27",
+      "frame": "CY2024Q3I",
+      "context_ref": "ctx-assets",
+      "decimals": -6
+    }
+  ]
+}

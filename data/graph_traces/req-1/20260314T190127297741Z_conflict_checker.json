@@ -1,0 +1,43 @@
+{
+  "thread_id": "req-1",
+  "node_name": "conflict_checker",
+  "timestamp": "20260314T190127297741Z",
+  "state_summary": {
+    "request_id": "req-1",
+    "ticker": "MSFT",
+    "completed_steps": [
+      "task_planner",
+      "document_router",
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "run_call_agent"
+    ],
+    "route_plan": [
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "run_call_agent",
+      "synthetic_agent"
+    ],
+    "shared_memory_count": 8,
+    "agent_packet_count": 6,
+    "verification_result_count": 0,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "partial"
+  },
+  "update_summary": {
+    "keys": [
+      "agent_packets",
+      "completed_steps",
+      "conflicts",
+      "shared_memory",
+      "updated_at"
+    ],
+    "completed_steps_count": 1,
+    "conflicts_count": 0,
+    "agent_packets_count": 1
+  },
+  "manual_review_requests": []
+}

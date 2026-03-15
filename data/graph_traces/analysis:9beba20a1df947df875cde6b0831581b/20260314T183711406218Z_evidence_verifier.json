@@ -1,0 +1,42 @@
+{
+  "thread_id": "analysis:9beba20a1df947df875cde6b0831581b",
+  "node_name": "evidence_verifier",
+  "timestamp": "20260314T183711406218Z",
+  "state_summary": {
+    "request_id": "analysis:9beba20a1df947df875cde6b0831581b",
+    "ticker": "NVDA",
+    "completed_steps": [
+      "task_planner",
+      "document_router",
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "run_call_agent",
+      "conflict_checker"
+    ],
+    "route_plan": [
+      "synthetic_agent"
+    ],
+    "shared_memory_count": 13,
+    "agent_packet_count": 7,
+    "verification_result_count": 0,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "partial"
+  },
+  "update_summary": {
+    "keys": [
+      "agent_packets",
+      "completed_steps",
+      "coverage_status",
+      "shared_memory",
+      "updated_at",
+      "verification_results",
+      "verifier_notes"
+    ],
+    "completed_steps_count": 1,
+    "verification_results_count": 0,
+    "agent_packets_count": 1
+  },
+  "manual_review_requests": []
+}

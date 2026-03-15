@@ -1,0 +1,4 @@
+snapshot_date,ticker,cik,company_name,exchange,is_domestic_filer
+2024-12-31,MSFT,0000789019,Microsoft Corp.,NASDAQ,true
+2024-12-31,NVDA,0001045810,NVIDIA Corp.,NASDAQ,true
+2024-12-31,ASML,0000937966,ASML Holding N.V.,NASDAQ,false

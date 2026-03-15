@@ -1,0 +1,3 @@
+Operator: Welcome to the NVIDIA earnings call.
+CEO: Revenue was driven by data center demand.
+CFO: Gross margin remained above guidance.

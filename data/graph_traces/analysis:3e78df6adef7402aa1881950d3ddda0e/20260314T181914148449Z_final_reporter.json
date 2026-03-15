@@ -1,0 +1,43 @@
+{
+  "thread_id": "analysis:3e78df6adef7402aa1881950d3ddda0e",
+  "node_name": "final_reporter",
+  "timestamp": "20260314T181914148449Z",
+  "state_summary": {
+    "request_id": "analysis:3e78df6adef7402aa1881950d3ddda0e",
+    "ticker": "NVDA",
+    "completed_steps": [
+      "task_planner",
+      "document_router",
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "run_call_agent",
+      "conflict_checker",
+      "evidence_verifier",
+      "manual_review_gate",
+      "synthetic_agent"
+    ],
+    "route_plan": [
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "synthetic_agent"
+    ],
+    "shared_memory_count": 17,
+    "agent_packet_count": 10,
+    "verification_result_count": 4,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "complete"
+  },
+  "update_summary": {
+    "keys": [
+      "completed_steps",
+      "coverage_status",
+      "final_report",
+      "updated_at"
+    ],
+    "completed_steps_count": 1
+  },
+  "manual_review_requests": []
+}

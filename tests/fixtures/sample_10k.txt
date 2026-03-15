@@ -1,0 +1,15 @@
+Item 1. Business
+The company designs accelerated computing platforms and serves enterprise and cloud customers.
+
+Item 1A. Risk Factors
+Demand may fluctuate due to macroeconomic conditions and supply constraints.
+
+Item 7. Management's Discussion and Analysis of Financial Condition and Results of Operations
+Management discusses year-over-year revenue growth and margin trends.
+
+Item 8. Financial Statements and Supplementary Data
+Consolidated Balance Sheets
+Consolidated Statements of Income
+
+Notes to Consolidated Financial Statements
+Note 1. Summary of Significant Accounting Policies.

@@ -1,0 +1,311 @@
+{
+  "report_id": "report:analysis:56a505aee2054e9ab111e096b54367cc",
+  "generated_at": "2026-03-15T08:25:26.561857Z",
+  "company": {
+    "cik": "0001045810",
+    "ticker": "NVDA",
+    "company_name": "NVIDIA Corp.",
+    "exchange": "NASDAQ",
+    "is_domestic_filer": true,
+    "latest_snapshot_date": "2024-12-31",
+    "universe_name": "NASDAQ_100",
+    "snapshot_label": null
+  },
+  "analysis_scope": {
+    "question": "Build a valuation-free disclosure-grounded thesis using 10-K, 10-Q, and 8-K only.",
+    "as_of_date": null,
+    "allowed_sources": [
+      "10-K",
+      "10-Q",
+      "8-K"
+    ],
+    "transcript_included": false,
+    "max_reretrievals": 2
+  },
+  "coverage_summary": {
+    "coverage_label": "complete",
+    "covered_channels": [
+      "10-K",
+      "10-Q",
+      "8-K"
+    ],
+    "missing_channels": [],
+    "covered_topics": [
+      "recent_quarter_change",
+      "material_events",
+      "item_5.02",
+      "item_9.01",
+      "long_term_structure"
+    ],
+    "missing_topics": [],
+    "notes": "Included claims: 4. Excluded claims: 0."
+  },
+  "executive_summary": {
+    "summary": "As of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities. On March 2, 2026, NVIDIA disclosed an Item 5.02 compensation update and adopted the Variable Compensation Plan for Fiscal Year 2027 for eligible executive officers. NVIDIA is a data-center-scale AI infrastructure company reshaping industries.",
+    "evidence_refs": [
+      {
+        "evidence_id": "run_10q_agent:0001045810-25-000230:0001045810-25-000230:section:21:chunk:2",
+        "document_id": "0001045810-25-000230",
+        "filing_type": "10-Q",
+        "excerpt": "As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, and marketable securities.",
+        "section_id": "0001045810-25-000230:section:21",
+        "chunk_id": "0001045810-25-000230:0001045810-25-000230:section:21:chunk:2",
+        "page_number": null,
+        "char_start": 109589,
+        "char_end": 110510,
+        "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581025000230/nvda-20251026.htm"
+      },
+      {
+        "evidence_id": "run_8k_agent:0001045810-26-000024:0001045810-26-000024:section:1:chunk:1",
+        "document_id": "0001045810-26-000024",
+        "filing_type": "8-K",
+        "excerpt": "On March 2, 2026, the Compensation Committee of the Board of Directors, or the Board, of NVIDIA Corporation, or the Company, adopted the Variable Compensation Plan for Fiscal Year 2027, or the 2027 Plan, which provides eligible executive...",
+        "section_id": "0001045810-26-000024:section:1",
+        "chunk_id": "0001045810-26-000024:0001045810-26-000024:section:1:chunk:1",
+        "page_number": null,
+        "char_start": 2141,
+        "char_end": 3234,
+        "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000024/nvda-20260302.htm"
+      },
+      {
+        "evidence_id": "run_10k_agent:0001045810-26-000021:0001045810-26-000021:section:5:chunk:1",
+        "document_id": "0001045810-26-000021",
+        "filing_type": "10-K",
+        "excerpt": "NVIDIA is now a data center scale AI infrastructure company reshaping all industries.",
+        "section_id": "0001045810-26-000021:section:5",
+        "chunk_id": "0001045810-26-000021:0001045810-26-000021:section:5:chunk:1",
+        "page_number": null,
+        "char_start": 32114,
+        "char_end": 33005,
+        "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm"
+      }
+    ],
+    "verification_label": "supported",
+    "confidence": "medium"
+  },
+  "key_risks": [],
+  "key_opportunities": [
+    {
+      "finding_id": "analysis:56a505aee2054e9ab111e096b54367cc:run_10q_agent:recent_quarter_change",
+      "agent_name": "run_10q_agent",
+      "title": "10-Q Liquidity and Recent Quarter Change",
+      "claim": "As of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities.",
+      "summary": "As of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities.",
+      "importance": "high",
+      "time_horizon": "recent",
+      "trigger_to_monitor": null,
+      "confidence": "high",
+      "verification_label": "supported",
+      "filing_types": [
+        "10-Q"
+      ],
+      "evidence_refs": [
+        {
+          "evidence_id": "run_10q_agent:0001045810-25-000230:0001045810-25-000230:section:21:chunk:2",
+          "document_id": "0001045810-25-000230",
+          "filing_type": "10-Q",
+          "excerpt": "As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, and marketable securities.",
+          "section_id": "0001045810-25-000230:section:21",
+          "chunk_id": "0001045810-25-000230:0001045810-25-000230:section:21:chunk:2",
+          "page_number": null,
+          "char_start": 109589,
+          "char_end": 110510,
+          "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581025000230/nvda-20251026.htm"
+        }
+      ]
+    }
+  ],
+  "watchpoints": [
+    {
+      "finding_id": "analysis:56a505aee2054e9ab111e096b54367cc:run_10k_agent:long_term_structure",
+      "agent_name": "run_10k_agent",
+      "title": "10-K Long-Term Structure",
+      "claim": "NVIDIA is a data-center-scale AI infrastructure company reshaping industries.",
+      "summary": "NVIDIA is a data-center-scale AI infrastructure company reshaping industries.",
+      "importance": "medium",
+      "time_horizon": "long_term",
+      "trigger_to_monitor": "long_term_structure",
+      "confidence": "medium",
+      "verification_label": "supported",
+      "filing_types": [
+        "10-K"
+      ],
+      "evidence_refs": [
+        {
+          "evidence_id": "run_10k_agent:0001045810-26-000021:0001045810-26-000021:section:5:chunk:1",
+          "document_id": "0001045810-26-000021",
+          "filing_type": "10-K",
+          "excerpt": "NVIDIA is now a data center scale AI infrastructure company reshaping all industries.",
+          "section_id": "0001045810-26-000021:section:5",
+          "chunk_id": "0001045810-26-000021:0001045810-26-000021:section:5:chunk:1",
+          "page_number": null,
+          "char_start": 32114,
+          "char_end": 33005,
+          "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm"
+        }
+      ]
+    }
+  ],
+  "final_investment_thesis": {
+    "thesis": "Verified disclosures show that on March 2, 2026, NVIDIA disclosed an Item 5.02 compensation update and adopted the Variable Compensation Plan for Fiscal Year 2027 for eligible executive officers. Additional filing support shows that as of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities. Further filings indicate that NVIDIA is a data-center-scale AI infrastructure company reshaping industries.",
+    "stance": "valuation_free_disclosure_thesis",
+    "uncertainty_statement": "The conclusion remains uncertainty-aware because some signals are only partially supported or coverage is incomplete.",
+    "evidence_refs": [
+      {
+        "evidence_id": "run_10q_agent:0001045810-25-000230:0001045810-25-000230:section:21:chunk:2",
+        "document_id": "0001045810-25-000230",
+        "filing_type": "10-Q",
+        "excerpt": "As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, and marketable securities.",
+        "section_id": "0001045810-25-000230:section:21",
+        "chunk_id": "0001045810-25-000230:0001045810-25-000230:section:21:chunk:2",
+        "page_number": null,
+        "char_start": 109589,
+        "char_end": 110510,
+        "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581025000230/nvda-20251026.htm"
+      },
+      {
+        "evidence_id": "run_10k_agent:0001045810-26-000021:0001045810-26-000021:section:5:chunk:1",
+        "document_id": "0001045810-26-000021",
+        "filing_type": "10-K",
+        "excerpt": "NVIDIA is now a data center scale AI infrastructure company reshaping all industries.",
+        "section_id": "0001045810-26-000021:section:5",
+        "chunk_id": "0001045810-26-000021:0001045810-26-000021:section:5:chunk:1",
+        "page_number": null,
+        "char_start": 32114,
+        "char_end": 33005,
+        "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm"
+      }
+    ],
+    "verification_label": "supported",
+    "confidence": "medium"
+  },
+  "evidence_grounded_report": {
+    "business_overview": [
+      {
+        "finding_id": "analysis:56a505aee2054e9ab111e096b54367cc:run_10k_agent:long_term_structure",
+        "agent_name": "run_10k_agent",
+        "title": "10-K Long-Term Structure",
+        "claim": "NVIDIA is a data-center-scale AI infrastructure company reshaping industries.",
+        "summary": "NVIDIA is a data-center-scale AI infrastructure company reshaping industries.",
+        "importance": "medium",
+        "time_horizon": "long_term",
+        "trigger_to_monitor": "long_term_structure",
+        "confidence": "medium",
+        "verification_label": "supported",
+        "filing_types": [
+          "10-K"
+        ],
+        "evidence_refs": [
+          {
+            "evidence_id": "run_10k_agent:0001045810-26-000021:0001045810-26-000021:section:5:chunk:1",
+            "document_id": "0001045810-26-000021",
+            "filing_type": "10-K",
+            "excerpt": "NVIDIA is now a data center scale AI infrastructure company reshaping all industries.",
+            "section_id": "0001045810-26-000021:section:5",
+            "chunk_id": "0001045810-26-000021:0001045810-26-000021:section:5:chunk:1",
+            "page_number": null,
+            "char_start": 32114,
+            "char_end": 33005,
+            "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm"
+          }
+        ]
+      }
+    ],
+    "recent_quarter_change": [
+      {
+        "finding_id": "analysis:56a505aee2054e9ab111e096b54367cc:run_10q_agent:recent_quarter_change",
+        "agent_name": "run_10q_agent",
+        "title": "10-Q Liquidity and Recent Quarter Change",
+        "claim": "As of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities.",
+        "summary": "As of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities.",
+        "importance": "high",
+        "time_horizon": "recent",
+        "trigger_to_monitor": null,
+        "confidence": "high",
+        "verification_label": "supported",
+        "filing_types": [
+          "10-Q"
+        ],
+        "evidence_refs": [
+          {
+            "evidence_id": "run_10q_agent:0001045810-25-000230:0001045810-25-000230:section:21:chunk:2",
+            "document_id": "0001045810-25-000230",
+            "filing_type": "10-Q",
+            "excerpt": "As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, and marketable securities.",
+            "section_id": "0001045810-25-000230:section:21",
+            "chunk_id": "0001045810-25-000230:0001045810-25-000230:section:21:chunk:2",
+            "page_number": null,
+            "char_start": 109589,
+            "char_end": 110510,
+            "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581025000230/nvda-20251026.htm"
+          }
+        ]
+      }
+    ],
+    "material_events": [
+      {
+        "finding_id": "analysis:56a505aee2054e9ab111e096b54367cc:run_8k_agent:material_events:5_02",
+        "agent_name": "run_8k_agent",
+        "title": "Item 5.02 - Officer and Compensation Updates",
+        "claim": "On March 2, 2026, NVIDIA disclosed an Item 5.02 compensation update and adopted the Variable Compensation Plan for Fiscal Year 2027 for eligible executive officers.",
+        "summary": "On March 2, 2026, NVIDIA disclosed an Item 5.02 compensation update and adopted the Variable Compensation Plan for Fiscal Year 2027 for eligible executive officers.",
+        "importance": "medium",
+        "time_horizon": "recent",
+        "trigger_to_monitor": "material_events",
+        "confidence": "medium",
+        "verification_label": "supported",
+        "filing_types": [
+          "8-K"
+        ],
+        "evidence_refs": [
+          {
+            "evidence_id": "run_8k_agent:0001045810-26-000024:0001045810-26-000024:section:1:chunk:1",
+            "document_id": "0001045810-26-000024",
+            "filing_type": "8-K",
+            "excerpt": "On March 2, 2026, the Compensation Committee of the Board of Directors, or the Board, of NVIDIA Corporation, or the Company, adopted the Variable Compensation Plan for Fiscal Year 2027, or the 2027 Plan, which provides eligible executive...",
+            "section_id": "0001045810-26-000024:section:1",
+            "chunk_id": "0001045810-26-000024:0001045810-26-000024:section:1:chunk:1",
+            "page_number": null,
+            "char_start": 2141,
+            "char_end": 3234,
+            "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000024/nvda-20260302.htm"
+          }
+        ]
+      }
+    ],
+    "cross_document_tensions": []
+  },
+  "verification_summary": {
+    "total_claims": 4,
+    "supported_claim_count": 4,
+    "partially_supported_claim_count": 0,
+    "insufficient_claim_count": 0,
+    "conflicting_claim_count": 0,
+    "unavailable_claim_count": 0,
+    "high_confidence_claim_count": 1,
+    "medium_confidence_claim_count": 3,
+    "low_confidence_claim_count": 0
+  },
+  "appendix": {
+    "conflicts": [],
+    "coverage_gaps": [],
+    "excluded_claims": [],
+    "source_documents": [
+      {
+        "document_id": "0001045810-25-000230",
+        "filing_type": "10-Q",
+        "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581025000230/nvda-20251026.htm"
+      },
+      {
+        "document_id": "0001045810-26-000024",
+        "filing_type": "8-K",
+        "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000024/nvda-20260302.htm"
+      },
+      {
+        "document_id": "0001045810-26-000021",
+        "filing_type": "10-K",
+        "source_uri": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm"
+      }
+    ]
+  }
+}

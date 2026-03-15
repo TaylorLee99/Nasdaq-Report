@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>report:analysis:56a505aee2054e9ab111e096b54367cc</title>
+  <style>
+    body { font-family: Georgia, 'Times New Roman', serif; margin: 40px auto; max-width: 900px; line-height: 1.6; color: #1f2937; padding: 0 24px; }
+    h1, h2, h3 { color: #111827; }
+    code { background: #f3f4f6; padding: 0.1rem 0.25rem; border-radius: 4px; }
+    pre { white-space: pre-wrap; word-break: break-word; background: #f9fafb; padding: 16px; border-radius: 8px; }
+    ul { padding-left: 1.25rem; }
+  </style>
+</head>
+<body>
+<pre># Evidence-Grounded Report
+
+- Report ID: `report:analysis:56a505aee2054e9ab111e096b54367cc`
+- Company: `NVDA` (NVIDIA Corp.)
+- Generated At: `2026-03-15T08:25:26.561857+00:00`
+- Allowed Sources: 10-K, 10-Q, 8-K
+- Presentation Note: Some Key Risks, Key Opportunities, or Watchpoints entries are renderer-level fill heuristics for readability and are not canonical report objects.
+
+## Executive Summary
+As of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities. On March 2, 2026, NVIDIA disclosed an Item 5.02 compensation update and adopted the Variable Compensation Plan for Fiscal Year 2027 for eligible executive officers. NVIDIA is a data-center-scale AI infrastructure company reshaping industries.
+
+## Data Coverage and Confidence Summary
+Coverage label: complete
+Covered channels: 10-K, 10-Q, 8-K
+Included claims: 4. Excluded claims: 0.
+
+## Key Risks
+- No verified risk finding
+  - Note: Presentation fill
+  - Claim: The current filing-only pass did not surface a disclosure-grounded risk claim that met the inclusion threshold.
+
+## Key Opportunities
+- 10-Q Liquidity and Recent Quarter Change
+  - Claim: As of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities.
+  - Verification: supported / confidence=high
+  - Evidence `run_10q_agent:0001045810-25-000230:0001045810-25-000230:section:21:chunk:2`
+    - Excerpt: As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, and marketable securities.
+- 10-K Long-Term Structure
+  - Claim: NVIDIA is a data-center-scale AI infrastructure company reshaping industries.
+  - Verification: supported / confidence=medium
+  - Trigger To Monitor: long_term_structure
+  - Evidence `run_10k_agent:0001045810-26-000021:0001045810-26-000021:section:5:chunk:1`
+    - Excerpt: NVIDIA is now a data center scale AI infrastructure company reshaping all industries.
+
+## Watchpoints
+- Strategic Positioning Check
+  - Note: Monitoring heuristic
+  - Claim: Monitor whether later filings continue to support the current long-term business positioning described in the latest 10-K.
+  - Based on: 10-K Long-Term Structure
+
+## Final Investment Thesis
+Verified disclosures show that on March 2, 2026, NVIDIA disclosed an Item 5.02 compensation update and adopted the Variable Compensation Plan for Fiscal Year 2027 for eligible executive officers. Additional filing support shows that as of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities. Further filings indicate that NVIDIA is a data-center-scale AI infrastructure company reshaping industries.
+The conclusion remains uncertainty-aware because some signals are only partially supported or coverage is incomplete.
+
+## Evidence-Grounded Report
+
+### Business Overview
+- 10-K Long-Term Structure
+  - Claim: NVIDIA is a data-center-scale AI infrastructure company reshaping industries.
+  - Verification: supported / confidence=medium
+  - Trigger To Monitor: long_term_structure
+  - Evidence `run_10k_agent:0001045810-26-000021:0001045810-26-000021:section:5:chunk:1`
+    - Excerpt: NVIDIA is now a data center scale AI infrastructure company reshaping all industries.
+
+### Recent Quarter Change
+- 10-Q Liquidity and Recent Quarter Change
+  - Claim: As of October 26, 2025, NVIDIA had $60.6 billion in cash, cash equivalents, and marketable securities.
+  - Verification: supported / confidence=high
+  - Evidence `run_10q_agent:0001045810-25-000230:0001045810-25-000230:section:21:chunk:2`
+    - Excerpt: As of October 26, 2025, we had $60.6 billion in cash, cash equivalents, and marketable securities.
+
+### Material Events
+- Item 5.02 - Officer and Compensation Updates
+  - Claim: On March 2, 2026, NVIDIA disclosed an Item 5.02 compensation update and adopted the Variable Compensation Plan for Fiscal Year 2027 for eligible executive officers.
+  - Verification: supported / confidence=medium
+  - Trigger To Monitor: material_events
+  - Evidence `run_8k_agent:0001045810-26-000024:0001045810-26-000024:section:1:chunk:1`
+    - Excerpt: On March 2, 2026, the Compensation Committee of the Board of Directors, or the Board, of NVIDIA Corporation, or the Company, adopted the Variable Compensation Plan for Fiscal Year 2027, or the 2027 Plan, which provides e
+
+### Cross-Document Tensions
+- None
+
+## Verification Summary
+- Total claims: 4
+- Supported: 4
+- Partially supported: 0
+- Insufficient: 0
+- Conflicting: 0
+- Unavailable: 0
+- High confidence: 1
+- Medium confidence: 3
+- Low confidence: 0
+
+## Appendix
+
+### Coverage Gaps
+- None
+
+### Excluded Claims
+- None
+
+### Source Documents
+- `0001045810-25-000230` (10-Q)
+  - Source: https://www.sec.gov/Archives/edgar/data/1045810/000104581025000230/nvda-20251026.htm
+- `0001045810-26-000024` (8-K)
+  - Source: https://www.sec.gov/Archives/edgar/data/1045810/000104581026000024/nvda-20260302.htm
+- `0001045810-26-000021` (10-K)
+  - Source: https://www.sec.gov/Archives/edgar/data/1045810/000104581026000021/nvda-20260125.htm</pre>
+</body>
+</html>

@@ -1,0 +1,36 @@
+body {
+  font-family: "Noto Serif", "Times New Roman", serif;
+  line-height: 1.5;
+  color: #1f2933;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+h1, h2, h3 {
+  font-family: "Noto Sans", "Helvetica Neue", sans-serif;
+  color: #0f172a;
+  margin-top: 1.2em;
+}
+
+h1 {
+  border-bottom: 2px solid #cbd5e1;
+  padding-bottom: 0.2em;
+}
+
+h2 {
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 0.15em;
+}
+
+code {
+  font-family: "JetBrains Mono", "SFMono-Regular", monospace;
+  font-size: 0.9em;
+}
+
+ul {
+  padding-left: 1.25rem;
+}
+
+li {
+  margin-bottom: 0.25rem;
+}

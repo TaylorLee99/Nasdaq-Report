@@ -1,0 +1,40 @@
+{
+  "thread_id": "analysis:972d8b1eb08f4e49b52dfe9ddff6ec04",
+  "node_name": "synthetic_agent",
+  "timestamp": "20260314T154457810974Z",
+  "state_summary": {
+    "request_id": "analysis:972d8b1eb08f4e49b52dfe9ddff6ec04",
+    "ticker": "NVDA",
+    "completed_steps": [
+      "task_planner",
+      "document_router",
+      "run_10k_agent",
+      "run_10q_agent",
+      "run_8k_agent",
+      "run_call_agent",
+      "conflict_checker",
+      "evidence_verifier",
+      "manual_review_gate"
+    ],
+    "route_plan": [
+      "synthetic_agent"
+    ],
+    "shared_memory_count": 17,
+    "agent_packet_count": 9,
+    "verification_result_count": 0,
+    "manual_review_request_count": 0,
+    "conflict_count": 0,
+    "coverage_label": "partial"
+  },
+  "update_summary": {
+    "keys": [
+      "agent_packets",
+      "completed_steps",
+      "shared_memory",
+      "updated_at"
+    ],
+    "completed_steps_count": 1,
+    "agent_packets_count": 1
+  },
+  "manual_review_requests": []
+}

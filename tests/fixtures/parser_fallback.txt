@@ -1,0 +1,2 @@
+This document does not contain recognizable section markers.
+It should be returned as a fallback span.
